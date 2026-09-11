@@ -32,7 +32,9 @@ import XCTest
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         field.tap(); field.typeText("synthesizer")
         XCTAssertTrue(app.buttons["story-1003"].waitForExistence(timeout: 5))
-        field.buttons["Clear text"].tap(); field.typeText("zzzznomatch")
+        field.buttons["Clear text"].tap()
+        field.tap()
+        field.typeText("zzzznomatch")
         XCTAssertTrue(app.staticTexts["No results"].waitForExistence(timeout: 5))
     }
 
