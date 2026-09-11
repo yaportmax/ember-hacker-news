@@ -1,32 +1,41 @@
 # Validation record
 
-Authoring date: September 11, 2026.
+September 11, 2026. Native build and simulator validation passed. This is not App Store approval or a claim of complete real-device testing.
 
-**This is not an App Store-ready certification.** No iOS binary has been compiled or executed in the authoring workspace. The environment is Ubuntu 24.04, not macOS, and has no Xcode, Apple SDK, simulator, or signing credentials.
+## Verified native run
 
-## Completed here
+[GitHub Actions run 6](https://github.com/yaportmax/ember-hacker-news/actions/runs/34642526701) validated commit `a5f5550b05938264df6cee2b526bccaa0800aafa` using Xcode 26.6 (17F113) on a standard `macos-26` runner.
 
 | Check | Result |
 | --- | --- |
-| Portable Swift core compilation | Passed with Swift 6.2.3, Swift 6 language mode and strict concurrency |
-| Deterministic XCTest suite | 29 tests passed, zero failures |
-| Live API integration | 1 test passed separately against HN and Algolia |
-| Live endpoints covered | Top, New, Best, Ask, Show, Jobs, item, comment, user, search |
-| App/UI test Swift syntax | Parsed successfully with the Swift compiler; Apple-framework type checking remains unperformed |
-| Xcode project structure | Parsed by an independent OpenStep parser; all references resolve |
-| Target source membership | All 19 app, 2 unit-test, and 1 UI-test Swift files included in their targets |
-| Scheme, Info.plist, privacy manifest | XML/plist structure checked |
-| Icon assets | Three 1024 × 1024 opaque RGB icons; primary icon visually inspected |
-| Release tools | Python syntax, asset/manifest checks, configuration rendering, and Linux refusal of Mac-only steps checked |
+| Static project, privacy manifest, assets | Passed |
+| Portable deterministic unit tests | 29 passed, zero failures |
+| iPhone simulator unit tests | 29 passed, zero failures |
+| iPhone 17 Pro UI tests | All 6 passed |
+| iPad Pro 13-inch (M5) UI tests | All 6 passed |
+| Release build for physical iOS devices | Passed, unsigned |
+| Real simulator screenshot export | Passed |
 
-The default test run reports 30 tests with one skipped. That skipped test is the live integration test, which was explicitly enabled and passed separately. There are **30 distinct passing tests total**, not 31. Logs are included in `Release/Evidence/`.
+The optional live API test is skipped in default CI. It passed separately during initial authoring against HN and Algolia; that earlier result is not part of this native run. Repeated executions across platforms are not additional distinct tests.
 
-## Still required
+UI tests cover bookmark restoration, search and empty results, offline relaunch, comment collapse/replies, dark-theme accessibility, and screenshots. Contrast checks exclude content obscured by the iPhone bottom floating tab bar; fully visible content and iPad top-tab layouts remain audited. Screenshots use deterministic fixtures, while normal app launches load live data.
 
-- Xcode compilation and Apple SDK type/availability checks for the SwiftUI app and UI tests.
-- iPhone and iPad simulator execution of the six UI tests, including the accessibility audit and screenshot capture.
-- Manual real-device review, Dynamic Type, VoiceOver, rotation, iPad multitasking, and long-thread scrolling/memory checks.
-- Apple Developer team, registered bundle ID, certificates/profiles, signed archive, and TestFlight.
-- Name availability, public support/privacy pages with the real publisher’s contact information, screenshot selection, age rating, final privacy disclosures, and App Store review.
+[The unchanged CI-generated validation receipt](Evidence/github-validation.json) records the source fingerprint, toolchain, and devices. It was matched against the local source before this documentation commit. Documentation and screenshot additions do not change the validated app source. The receipt is historical evidence, not a signing credential.
 
-`scripts/release.py validate` writes `Release/validation.json` only after iPhone/iPad tests and a Release device build succeed on a Mac. No such receipt is included or fabricated here. `archive` refuses to continue without a current passing receipt and completed publisher configuration.
+## Fixes found through simulator testing
+
+- Increased rank size and contrast, and strengthened secondary story text in both themes.
+- Removed a toolbar wordmark that iOS clipped.
+- Updated UI tests for iPad floating tab controls and search focus after clearing text.
+
+[View the actual app screenshots](../docs/SCREENSHOTS.md). The gallery comes from run 5; the only subsequent source change was to the search test's focus handling.
+
+## Remaining publishing work
+
+- Set the real Apple Developer team and a registered bundle ID; configure signing.
+- Host support and privacy pages with the publisher's contact details.
+- Produce a signed archive and verify it through TestFlight on physical devices.
+- Review VoiceOver, larger Dynamic Type sizes, rotation, iPad multitasking, live articles, and long discussions on devices.
+- Complete App Store metadata, age rating, privacy disclosures, screenshot selection, and Apple review.
+
+`scripts/release.py validate` writes a release receipt only after the full native gate passes. Changing source or publisher configuration invalidates that receipt. `archive` requires current validation and completed publisher configuration; it never uploads automatically.

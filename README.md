@@ -2,7 +2,17 @@
 
 A minimal native Hacker News reader for iPhone and iPad. Swift 6, SwiftUI, iOS 17+. No packages, backend, advertisements, or analytics.
 
-**Status:** source project implemented. The portable core is tested on Linux. The iOS application has not been compiled or run in Xcode in the authoring environment. It must pass the Mac release checks before submission. See `Release/VALIDATION.md` for exact evidence and remaining gates.
+**Status:** [native validation passed](https://github.com/yaportmax/ember-hacker-news/actions/runs/34642526701): 29 deterministic unit tests, all six UI tests on iPhone and iPad, and an unsigned Release device build with Xcode 26.6. Signing, TestFlight, and real-device review remain. See `Release/VALIDATION.md` for evidence.
+
+## Actual app screenshots
+
+Captured from the running native app in GitHub-hosted iPhone and iPad simulators. These use deterministic test stories; normal launches load live Hacker News data.
+
+| Light | Dark |
+| --- | --- |
+| ![iPhone stories in light mode](docs/screenshots/iphone-01-stories-light.png) | ![iPhone stories in dark mode](docs/screenshots/iphone-04-stories-dark.png) |
+
+[All iPhone and iPad screenshots](docs/SCREENSHOTS.md)
 
 ## Open and run
 
@@ -48,7 +58,7 @@ python3 scripts/release.py validate
 
 This runs unit and UI tests on iPhone, UI tests on iPad, a Release build for a physical iOS device without signing, and static project checks. Results are stored in `build/`. It writes a validation receipt only after all steps succeed. Optional `--iphone` and `--ipad` arguments select simulator UDIDs explicitly.
 
-UI tests use synthetic fixtures only when **Debug** is launched with `--ui-testing`. Normal Debug builds use the live APIs. Release builds do not contain the fixture implementation. The screenshot test attaches simulator captures to the test results; these have not been produced in the authoring environment.
+UI tests use synthetic fixtures only when **Debug** is launched with `--ui-testing`. Normal Debug builds use the live APIs. Release builds do not contain the fixture implementation. The screenshot test attaches real simulator captures to the test results. GitHub Actions exports these as `ios-test-results` artifacts, retained for one day. UI-test screenshots use synthetic stories, not the live feed.
 
 ## Prepare a release
 
@@ -87,4 +97,4 @@ Networking uses an actor and ephemeral URLSession, up to eight concurrent item r
 
 Bookmarks use ordered actor-backed atomic writes. Failed writes surface in the UI. A malformed or future-version archive is preserved and saving is paused until explicit recovery; recovery keeps a separate original copy. Caches are replaceable and cannot block reading live data.
 
-The name and bundle ID are provisional until checked in your App Store Connect account. Apple signing, simulator/device validation, screenshots, hosted support/privacy URLs, age-rating answers, and final privacy disclosures remain release-owner tasks.
+The name and bundle ID are provisional until checked in your App Store Connect account. Apple signing, real-device review, hosted support/privacy URLs, age-rating answers, and final privacy disclosures remain required before publishing.
