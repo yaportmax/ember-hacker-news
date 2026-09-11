@@ -69,7 +69,8 @@ import XCTest
                 guard issue.auditType == .contrast, let element = issue.element else { return false }
                 let frame = element.frame
                 let tabBar = app.tabBars.firstMatch
-                guard tabBar.exists, !frame.isEmpty else { return false }
+                guard tabBar.exists, !frame.isEmpty,
+                      tabBar.frame.minY > app.frame.midY else { return false }
                 return frame.maxY > tabBar.frame.minY
             }
         }
