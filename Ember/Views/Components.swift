@@ -119,8 +119,8 @@ struct StoryRow: View {
         HStack(alignment: .top, spacing: 13) {
             if let rank {
                 Text(rank.formatted())
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(EmberStyle.secondaryText)
+                    .font(.system(.subheadline, design: .monospaced, weight: .medium))
+                    .foregroundStyle(.primary)
                     .frame(minWidth: 21, alignment: .trailing)
                     .padding(.top, 4)
                     .accessibilityHidden(true)

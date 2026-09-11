@@ -17,17 +17,17 @@ import XCTest
         app.buttons["bookmark-story"].tap()
         XCTAssertEqual(app.buttons["bookmark-story"].label, "Remove bookmark")
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        app.tabBars.buttons["Saved"].tap()
+        selectTab("Saved", in: app)
         XCTAssertTrue(app.buttons["story-1001"].waitForExistence(timeout: 5))
         app.terminate()
         let restored = launch(["--preserve-state"])
-        restored.tabBars.buttons["Saved"].tap()
+        selectTab("Saved", in: restored)
         XCTAssertTrue(restored.buttons["story-1001"].waitForExistence(timeout: 5))
     }
 
     func testSearchAndEmptyResults() {
         let app = launch()
-        app.tabBars.buttons["Search"].tap()
+        selectTab("Search", in: app)
         let field = app.searchFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         field.tap(); field.typeText("synthesizer")
@@ -74,7 +74,7 @@ import XCTest
                 return frame.maxY > tabBar.frame.minY
             }
         }
-        app.tabBars.buttons["Settings"].tap()
+        selectTab("Settings", in: app)
         XCTAssertTrue(app.switches["Compact stories"].waitForExistence(timeout: 5))
     }
 
@@ -87,12 +87,25 @@ import XCTest
         attach(app, name: "02-Discussion-Light")
         app.buttons["bookmark-story"].tap()
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        app.tabBars.buttons["Saved"].tap()
+        selectTab("Saved", in: app)
         attach(app, name: "03-Saved-Light")
         app.terminate()
         let dark = launch(["-appearance", "dark"])
         XCTAssertTrue(dark.buttons["story-1001"].waitForExistence(timeout: 10))
         attach(dark, name: "04-Stories-Dark")
+    }
+
+    private func selectTab(_ name: String, in app: XCUIApplication) {
+        let phoneTab = app.tabBars.buttons[name]
+        if phoneTab.exists {
+            phoneTab.tap()
+        } else {
+            // iPad's floating top tabs are exposed as cells, not a TabBar.
+            let tabletTab = app.descendants(matching: .any)
+                .matching(NSPredicate(format: "label == %@", name)).firstMatch
+            XCTAssertTrue(tabletTab.waitForExistence(timeout: 5), "Missing tab: \(name)")
+            tabletTab.tap()
+        }
     }
 
     private func attach(_ app: XCUIApplication, name: String) {
