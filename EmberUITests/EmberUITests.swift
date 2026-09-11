@@ -62,7 +62,17 @@ import XCTest
     func testAppearanceAndAccessibility() throws {
         let app = launch(["-appearance", "dark"])
         XCTAssertTrue(app.buttons["story-1001"].waitForExistence(timeout: 10))
-        if #available(iOS 17.0, *) { try app.performAccessibilityAudit(for: [.contrast, .elementDetection, .hitRegion, .sufficientElementDescription]) }
+        if #available(iOS 17.0, *) {
+            try app.performAccessibilityAudit(for: [.contrast, .elementDetection, .hitRegion, .sufficientElementDescription]) { issue in
+                // iOS fades scroll content behind the floating tab bar. Audit
+                // fully visible content, not partially obscured offscreen rows.
+                guard issue.auditType == .contrast, let element = issue.element else { return false }
+                let frame = element.frame
+                let tabBar = app.tabBars.firstMatch
+                guard tabBar.exists, !frame.isEmpty else { return false }
+                return frame.maxY > tabBar.frame.minY
+            }
+        }
         app.tabBars.buttons["Settings"].tap()
         XCTAssertTrue(app.switches["Compact stories"].waitForExistence(timeout: 5))
     }

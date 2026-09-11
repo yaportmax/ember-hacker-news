@@ -117,7 +117,7 @@ struct StoryRow: View {
             if let rank {
                 Text(rank.formatted())
                     .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary)
                     .frame(minWidth: 21, alignment: .trailing)
                     .padding(.top, 4)
                     .accessibilityHidden(true)

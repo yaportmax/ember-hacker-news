@@ -44,10 +44,6 @@ struct FeedView: View {
         .readingWidth()
         .navigationTitle(feed.title)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Text("EMBER").font(.system(.caption2, design: .monospaced, weight: .bold)).tracking(3).foregroundStyle(Color.accentColor)
-                    .accessibilityLabel("Ember, Hacker News")
-            }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Picker("Feed", selection: $selectedFeed) {
