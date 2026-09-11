@@ -1,0 +1,41 @@
+name: iOS validation
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show toolchain
+        run: xcodebuild -version
+      - name: Test and build
+        run: python3 scripts/release.py validate
+      - name: Export screenshots
+        if: always()
+        shell: bash
+        run: |
+          shopt -s nullglob
+          for result in build/*.xcresult; do
+            destination="build/screenshots/$(basename "$result" .xcresult)"
+            mkdir -p "$destination"
+            xcrun xcresulttool export attachments --path "$result" --output-path "$destination"
+          done
+      - name: Preserve results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-results
+          retention-days: 1
+          path: |
+            build/screenshots/
+            Release/validation.json
+          if-no-files-found: ignore

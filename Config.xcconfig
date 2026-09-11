@@ -1,0 +1,7 @@
+// Change these before creating your App Store record.
+// Bundle ID must be unique and registered to your Apple Developer team.
+EMBER_BUNDLE_ID = com.example.Ember
+DEVELOPMENT_TEAM =
+// Set an HTTPS support page you operate. Empty for local development.
+// In xcconfig use https:/$()/your-domain/path so // is not parsed as a comment.
+EMBER_SUPPORT_URL =

@@ -1,0 +1,14 @@
+.DS_Store
+.build/
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcresult/
+*.xcarchive/
+*.ipa
+ExportOptions.plist
+Release/validation.json
+Release/screenshots/
+__pycache__/
+*.pyc
