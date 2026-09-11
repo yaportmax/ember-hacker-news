@@ -4,6 +4,9 @@ import SafariServices
 enum EmberStyle {
     static let canvas = Color(uiColor: .systemBackground)
     static let subtle = Color(uiColor: .secondarySystemBackground)
+    static let secondaryText = Color(uiColor: UIColor { traits in
+        UIColor(white: traits.userInterfaceStyle == .dark ? 0.75 : 0.38, alpha: 1)
+    })
     static let measure: CGFloat = 760
 }
 
@@ -117,7 +120,7 @@ struct StoryRow: View {
             if let rank {
                 Text(rank.formatted())
                     .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(EmberStyle.secondaryText)
                     .frame(minWidth: 21, alignment: .trailing)
                     .padding(.top, 4)
                     .accessibilityHidden(true)
@@ -129,7 +132,7 @@ struct StoryRow: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .lineSpacing(2)
                 if !compact, let domain = item.domain {
-                    Text(domain).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    Text(domain).font(.caption).foregroundStyle(EmberStyle.secondaryText).lineLimit(1)
                 }
                 ViewThatFits(in: .horizontal) {
                     metadata(includeAuthor: true)
@@ -157,7 +160,7 @@ struct StoryRow: View {
             if reading.isSaved(item.id) { Image(systemName: "bookmark.fill").foregroundStyle(Color.accentColor).accessibilityLabel("Saved") }
         }
         .font(.caption)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(EmberStyle.secondaryText)
     }
 }
 
