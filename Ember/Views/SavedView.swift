@@ -30,6 +30,6 @@ struct SavedView: View {
         }
         .listStyle(.plain).readingWidth()
         .navigationTitle("Saved")
-        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .automatic), prompt: showHistory ? "Search reading history" : "Search saved stories")
+        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .automatic), prompt: Text(showHistory ? "Search reading history" : "Search saved stories").foregroundColor(EmberStyle.secondaryText))
     }
 }

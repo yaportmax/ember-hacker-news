@@ -248,7 +248,8 @@ import XCTest
         let message = app.staticTexts["This removes the selected data from this device and can’t be undone."]
         XCTAssertTrue(message.waitForExistence(timeout: 5))
         attach(app, name: "Audit-26-Clear-History-Confirmation")
-        app.buttons["confirm-clear-data"].tap()
+        // SwiftUI exposes a wrapper and inner button for this same action.
+        app.sheets["Clear reading history"].buttons["confirm-clear-data"].firstMatch.tap()
         selectTab("Saved", in: app)
         XCTAssertTrue(app.buttons["story-1001"].waitForExistence(timeout: 5))
         app.buttons["History"].tap()
@@ -335,7 +336,8 @@ import XCTest
     }
 
     private func attach(_ app: XCUIApplication, name: String) {
-        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        // Full-screen capture preserves the physical display after rotation.
+        let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = name
         screenshot.lifetime = .keepAlways
         add(screenshot)

@@ -11,18 +11,31 @@ A story or comment should be the first thing you notice. Controls must explain t
 | Priority | Finding | Change | Evidence |
 | --- | --- | --- | --- |
 | High | Search hides its filters after entering a query, on both devices. The baseline walkthrough stopped here. | Filters live beside the result count and remain available during search. | Baseline run 34699831096, Search Results; revised walkthrough exercises the menu with a query present. |
-| High | At the largest text size, the fixed article button consumes much of the iPhone's reading area. | A compact article link scrolls with the story header. The title opens the same article. | Baseline Large Text Discussion and Comments; revised large-text captures and browser-return tests. |
+| High | At the largest text size, the fixed article button consumes much of the iPhone's reading area. | A compact article link scrolls with the story header. The title opens the same article, and the discussion menu keeps access available after scrolling. | Baseline Large Text Discussion and Comments; revised large-text captures and browser-return tests. |
 | High | The pinned discussion heading overlays enlarged comment text. | Comment count is an ordinary scrolling heading. | Baseline Large Text Comments. |
 | Medium | Author links acquire stretched chevrons inside list rows; title metadata becomes squeezed at large sizes. | Author buttons open profiles through the discussion's navigation route. Metadata stacks at accessibility sizes. | Baseline Text Post and Large Text Discussion; profile-navigation capture. |
 | Medium | Ranks, score arrows, comment icons, authors, and chevrons compete with story titles. | Remove rank columns and redundant metadata icons. Keep points, comments, age, domain, and saved state with readable contrast. | Baseline Stories; revised feed, saved, compact, and search captures. |
 | Medium | Settings mixes everyday preferences with destructive maintenance and long explanations. | Keep appearance accessible; group reading preferences, hidden content, and storage on dedicated screens. | Source inspection; revised Settings and detail captures. |
-| Medium | The iPad's large heading sits far from its centered reading column. | Use inline navigation headings in regular-width layouts. | Baseline iPad Stories; final iPad captures. |
+| Medium | The iPad’s large heading sits far from its reading column, and a shared width modifier forces large titles onto iPhone detail screens. | Keep a centered reading measure, preserve compact destination headings, and show the selected iPad feed in its menu label. | Baseline iPad Stories and candidate iPhone destination captures. |
 | Medium | Job posts invite readers to join a discussion even though jobs do not accept comments. | Show a job-specific destination and View job action. | Source inspection; job UI test. |
 | Medium | Search can show a result count with no explanation when matching stories are hidden. | Explain the hidden-results state and where to restore content. | Source inspection. |
 | Medium | Author buttons looked large enough but their tappable regions only covered their text. Small metadata separators and a bare domain also failed accessibility checks. | Give author controls explicit touch shapes; draw decorative separators as shapes and describe the article source. | Accessibility captures from run 34701063185. |
 | Medium | A large destructive Block user row dominated the profile. | Place blocking in the profile actions menu. | Profile capture from refinement run 34700318492. |
 | Low | Text-only posts put the reply link before the post; article access disappears from reach when deeply scrolled. | Put reply links after post content and keep article access in the discussion menu. | Refined Text Post capture and browser-navigation test. |
 | Low | Search says “1 results”; saved empty states use vague slogans; text-only stories have duplicate share actions. | Correct singular copy, state empty collections plainly, and share articles only when an article exists. | Source inspection and revised search/saved captures. |
+
+## Screen review
+
+| Area | Judgment applied |
+| --- | --- |
+| Stories, search, saved | Prioritize titles; keep supporting metadata quiet; retain filters while searching. |
+| Discussions, replies | Let reading occupy the screen; make authors and thread controls easy to tap; retain article access in the menu. |
+| Text posts, polls, jobs | Put the content before the participation action; do not invite comments on jobs. |
+| Settings and profiles | Keep daily choices near the top; move maintenance and blocking out of the main reading flow. |
+| Empty, hidden, offline | Explain the actual state and a useful recovery path; do not imply bookmarks disappeared. |
+| Large text and iPad | Preserve chosen text size, cap reply indentation, constrain line length, and avoid detached headings. |
+
+The final capture review also found that app-window screenshots were cropped during landscape rotation. Captures now use the full simulator screen. Native search placeholders receive an explicit readable color after two near-threshold iPhone contrast findings.
 
 ## Before captures
 

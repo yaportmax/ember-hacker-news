@@ -53,7 +53,7 @@ struct SearchView: View {
         .scrollDismissesKeyboard(.interactively)
         .readingWidth()
         .navigationTitle("Search")
-        .searchable(text: $model.query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search stories")
+        .searchable(text: $model.query, placement: .navigationBarDrawer(displayMode: .always), prompt: Text("Search stories").foregroundColor(EmberStyle.secondaryText))
         .autocorrectionDisabled()
         .textInputAutocapitalization(.never)
         .task(id: model.key) { await model.search() }
