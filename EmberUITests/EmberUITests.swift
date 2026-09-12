@@ -97,6 +97,78 @@ import XCTest
         attach(dark, name: "04-Stories-Dark")
     }
 
+    func testAuditMainFlows() {
+        let app = launch()
+        XCTAssertTrue(app.buttons["story-1001"].waitForExistence(timeout: 10))
+        attach(app, name: "Audit-01-Stories")
+        app.buttons["feed-menu"].tap()
+        attach(app, name: "Audit-02-Feed-Menu")
+        app.buttons["Ask HN"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["story-1004"].waitForExistence(timeout: 5))
+        app.buttons["story-1004"].tap()
+        XCTAssertTrue(app.buttons["bookmark-story"].waitForExistence(timeout: 5))
+        attach(app, name: "Audit-03-Text-Post")
+        selectTab("Search", in: app)
+        attach(app, name: "Audit-04-Search-Empty")
+        let field = app.searchFields.firstMatch
+        field.tap(); field.typeText("synthesizer\n")
+        XCTAssertTrue(app.buttons["story-1003"].waitForExistence(timeout: 5))
+        attach(app, name: "Audit-05-Search-Results")
+        app.buttons["Search filters"].tap()
+        attach(app, name: "Audit-06-Search-Filters")
+        // Relaunch keeps each capture route independent of popover dismissal.
+        app.terminate()
+        let collections = launch()
+        selectTab("Saved", in: collections)
+        attach(collections, name: "Audit-07-Saved-Empty")
+        collections.buttons["History"].tap()
+        attach(collections, name: "Audit-08-History-Empty")
+        selectTab("Settings", in: collections)
+        attach(collections, name: "Audit-09-Settings")
+        collections.swipeUp()
+        attach(collections, name: "Audit-10-Settings-Lower")
+        reveal(collections.buttons["Help & support"], in: collections)
+        collections.buttons["Help & support"].tap()
+        attach(collections, name: "Audit-11-Help")
+        collections.navigationBars.buttons.element(boundBy: 0).tap()
+        reveal(collections.buttons["Privacy"], in: collections)
+        collections.buttons["Privacy"].tap()
+        attach(collections, name: "Audit-12-Privacy")
+        collections.terminate()
+        let discussion = launch()
+        XCTAssertTrue(discussion.buttons["story-1001"].waitForExistence(timeout: 10))
+        discussion.buttons["story-1001"].tap()
+        XCTAssertTrue(discussion.buttons["collapse-2001"].waitForExistence(timeout: 5))
+        attach(discussion, name: "Audit-13-Discussion")
+        let replies = discussion.buttons["replies-2001"]
+        reveal(replies, in: discussion); replies.tap()
+        XCTAssertTrue(discussion.staticTexts["comment-text-3001"].waitForExistence(timeout: 5))
+        attach(discussion, name: "Audit-14-Replies")
+        discussion.terminate()
+        let offline = launch(["--offline"])
+        XCTAssertTrue(offline.staticTexts["You’re offline. Check your connection and try again."].waitForExistence(timeout: 10))
+        attach(offline, name: "Audit-15-Offline-Empty")
+    }
+
+    func testAuditLargeText() {
+        let app = launch(["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+        XCTAssertTrue(app.buttons["story-1001"].waitForExistence(timeout: 10))
+        attach(app, name: "Audit-16-Large-Text-Feed")
+        app.buttons["story-1001"].tap()
+        XCTAssertTrue(app.buttons["bookmark-story"].waitForExistence(timeout: 5))
+        attach(app, name: "Audit-17-Large-Text-Discussion")
+        app.swipeUp()
+        attach(app, name: "Audit-18-Large-Text-Comments")
+    }
+
+    private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
+        for _ in 0..<6 {
+            if element.isHittable { return }
+            app.swipeUp()
+        }
+        XCTAssertTrue(element.isHittable)
+    }
+
     private func selectTab(_ name: String, in app: XCUIApplication) {
         let phoneTab = app.tabBars.buttons[name]
         if phoneTab.exists {
