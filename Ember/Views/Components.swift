@@ -50,8 +50,8 @@ struct InlineNotice: View {
     var retry: (() -> Void)?
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label(message, systemImage: symbol).font(.subheadline).foregroundStyle(.secondary)
-            if let retry { Button("Try again", action: retry).font(.subheadline.weight(.semibold)).frame(minHeight: 44) }
+            Label(message, systemImage: symbol).font(.subheadline).foregroundStyle(EmberStyle.secondaryText)
+            if let retry { Button("Try again", action: retry).font(.subheadline.weight(.semibold)).frame(minHeight: 44).buttonStyle(.borderless) }
         }
         .padding(.vertical, 8)
         .accessibilityElement(children: .contain)
@@ -75,6 +75,7 @@ struct EmptyState: View {
 struct PageButton: View {
     var title = "Load more"
     let loading: Bool
+    var alignment: Alignment = .center
     let action: () -> Void
     var body: some View {
         Button(action: action) {
@@ -83,8 +84,9 @@ struct PageButton: View {
                 Text(loading ? "Loading…" : title)
             }
             .font(.subheadline.weight(.medium))
-            .frame(maxWidth: .infinity, minHeight: 44)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: alignment)
         }
+        .buttonStyle(.plain).foregroundStyle(Color.accentColor)
         .disabled(loading)
         .accessibilityIdentifier("load-more")
     }
@@ -110,57 +112,51 @@ struct RelativeTime: View {
 
 struct StoryRow: View {
     let item: HNItem
-    var rank: Int?
     @Environment(ReadingStore.self) private var reading
+    @Environment(\.dynamicTypeSize) private var typeSize
     @AppStorage("compactRows") private var compact = false
     @AppStorage("dimReadStories") private var dimRead = true
 
     var body: some View {
-        HStack(alignment: .top, spacing: 13) {
-            if let rank {
-                Text(rank.formatted())
-                    .font(.system(.subheadline, design: .monospaced, weight: .medium))
-                    .foregroundStyle(.primary)
-                    .frame(minWidth: 21, alignment: .trailing)
-                    .padding(.top, 4)
-                    .accessibilityHidden(true)
+        VStack(alignment: .leading, spacing: compact ? 5 : 7) {
+            Text(item.displayTitle)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(dimRead && reading.isRead(item.id) ? EmberStyle.secondaryText : .primary)
+                .fixedSize(horizontal: false, vertical: true)
+                .lineSpacing(2)
+            if !compact, let domain = item.domain {
+                Text(domain).font(.caption).foregroundStyle(EmberStyle.secondaryText)
+                    .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
             }
-            VStack(alignment: .leading, spacing: compact ? 5 : 9) {
-                Text(item.displayTitle)
-                    .font(.system(.body, design: .default, weight: .semibold))
-                    .foregroundStyle(dimRead && reading.isRead(item.id) ? .secondary : .primary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .lineSpacing(2)
-                if !compact, let domain = item.domain {
-                    Text(domain).font(.caption).foregroundStyle(EmberStyle.secondaryText).lineLimit(1)
-                }
-                ViewThatFits(in: .horizontal) {
-                    metadata(includeAuthor: true)
-                    metadata(includeAuthor: false)
-                }
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 4) { statistics; timeAndBookmark }
+            } else {
+                HStack(spacing: 8) { statistics; separator; timeAndBookmark }
             }
         }
-        .padding(.vertical, compact ? 9 : 14)
+        .font(.caption).foregroundStyle(EmberStyle.secondaryText)
+        .padding(.vertical, compact ? 8 : 12)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
-        .accessibilityHint("Opens the discussion and article actions")
+        .accessibilityHint("Opens discussion")
     }
 
-    private func metadata(includeAuthor: Bool) -> some View {
-        HStack(spacing: 10) {
-            if item.type == "job" { Text("JOB").fontWeight(.medium) }
-            else {
-                Label(max(0, item.score ?? 0).formatted(), systemImage: "arrow.up")
-                    .accessibilityLabel("\(max(0, item.score ?? 0)) points")
-                Label(item.commentCount.formatted(), systemImage: "bubble.right")
-                    .accessibilityLabel("\(item.commentCount) comments")
-            }
-            if includeAuthor, let by = item.by { Text(by).lineLimit(1) }
-            RelativeTime(date: item.date)
-            if reading.isSaved(item.id) { Image(systemName: "bookmark.fill").foregroundStyle(Color.accentColor).accessibilityLabel("Saved") }
+    @ViewBuilder private var statistics: some View {
+        if item.type == "job" { Text("Job") }
+        else {
+            // Text can wrap at accessibility sizes; icons do not imply voting.
+            Text("\(max(0, item.score ?? 0).formatted()) points · \(item.commentCount.formatted()) \(item.commentCount == 1 ? "comment" : "comments")")
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .font(.caption)
-        .foregroundStyle(EmberStyle.secondaryText)
+    }
+    private var separator: some View { Text("·").accessibilityHidden(true) }
+    private var timeAndBookmark: some View {
+        HStack(spacing: 8) {
+            RelativeTime(date: item.date).fixedSize()
+            if reading.isSaved(item.id) {
+                Image(systemName: "bookmark.fill").foregroundStyle(Color.accentColor).accessibilityLabel("Saved")
+            }
+        }
     }
 }
 
@@ -174,7 +170,7 @@ struct StoryActions: ViewModifier {
             .contextMenu {
                 if let url = item.articleURL { Button("Read article", systemImage: "safari") { reading.record(item); app.open(url) } }
                 Button(reading.isSaved(item.id) ? "Remove bookmark" : "Save story", systemImage: reading.isSaved(item.id) ? "bookmark.slash" : "bookmark") { reading.toggleBookmark(item) }
-                ShareLink(item: item.articleURL ?? item.discussionURL) { Label("Share article", systemImage: "square.and.arrow.up") }
+                if let url = item.articleURL { ShareLink(item: url) { Label("Share article", systemImage: "square.and.arrow.up") } }
                 ShareLink(item: item.discussionURL) { Label("Share discussion", systemImage: "bubble.right") }
                 Button("Open on Hacker News", systemImage: "arrow.up.right.square") { app.open(item.discussionURL) }
                 Divider()

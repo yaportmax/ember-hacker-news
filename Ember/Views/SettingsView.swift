@@ -21,45 +21,70 @@ struct SettingsView: View {
             Section("Appearance") {
                 Picker("Theme", selection: $appearance) { Text("System").tag("system"); Text("Light").tag("light"); Text("Dark").tag("dark") }
                 Toggle("Compact stories", isOn: $compact)
+            }
+            Section("Reading") {
+                NavigationLink("Reading preferences") { readingPreferences }
+                NavigationLink("Hidden content") { hiddenContent }
+                NavigationLink("Storage") { storage }
+            }
+            Section {
+                Button("Sign in on Hacker News", systemImage: "arrow.up.right") { app.open(HNLinks.login) }
+                Button("Submit a story", systemImage: "arrow.up.right") { app.open(HNLinks.submit) }
+            } header: { Text("Hacker News") } footer: { Text("Opens the Hacker News website.") }
+            Section {
+                NavigationLink("Help & support") { SupportView() }
+                NavigationLink("Privacy") { PrivacyView() }
+                NavigationLink("Acknowledgments") { AcknowledgmentsView() }
+                LabeledContent("Version", value: "\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"))")
+            } header: { Text("About") } footer: { Text("An independent reader for Hacker News.") }
+        }
+        .readingWidth().navigationTitle("Settings")
+
+    }
+
+    private var readingPreferences: some View {
+        Form {
+            Section("Stories") {
                 Toggle("Dim read stories", isOn: $dimRead)
                 Toggle("Hide read stories", isOn: $hideRead)
             }
             Section {
                 Toggle("Open in default browser", isOn: $externalBrowser)
-                Toggle("Use Reader when available", isOn: $readerMode).disabled(externalBrowser)
-            } header: { Text("Reading") } footer: { Text("Reader removes distractions from supported articles in the in-app browser. Text size follows your device’s accessibility settings.") }
-            Section("Hacker News") {
-                Button("Sign in on Hacker News", systemImage: "person.crop.circle") { app.open(HNLinks.login) }
-                Button("Submit a story", systemImage: "square.and.pencil") { app.open(HNLinks.submit) }
-                NavigationLink("Blocked users") { blockedUsers }
-                if !reading.archive.hiddenStories.isEmpty {
-                    Button("Restore hidden stories (\(reading.archive.hiddenStories.count))") { reading.restoreHidden() }
-                }
-            }
+                if !externalBrowser { Toggle("Use Reader when available", isOn: $readerMode) }
+            } header: { Text("Articles") } footer: { Text(externalBrowser ? "Articles open in the browser you chose in iOS Settings." : "Reader simplifies supported articles in the in-app browser.") }
+            Section { Text("Text size follows your device’s text settings.").font(.subheadline).foregroundStyle(EmberStyle.secondaryText) }
+        }.readingWidth().navigationTitle("Reading preferences").navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var hiddenContent: some View {
+        List {
+            Section {
+                NavigationLink("Blocked users (\(reading.blockedUsers.count))") { blockedUsers }
+                Button("Restore hidden stories (\(reading.archive.hiddenStories.count))") { reading.restoreHidden() }
+                    .disabled(reading.archive.hiddenStories.isEmpty)
+            } footer: { Text("Hide a story from its menu, or block an author from their profile. These choices apply only on this device.") }
+        }.readingWidth().navigationTitle("Hidden content").navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var storage: some View {
+        Form {
             Section {
                 Button("Clear reading history", role: .destructive) { confirmation = .history }.disabled(reading.history.isEmpty)
                 Button("Remove all bookmarks", role: .destructive) { confirmation = .bookmarks }.disabled(reading.bookmarks.isEmpty)
+            } footer: { Text("Bookmarks and history stay on this device and may be included in your device backup.") }
+            Section {
                 Button("Clear offline feed cache") {
                     Task {
                         do { try await app.cache.clear(); cacheMessage = "Offline feed cache cleared." }
                         catch { cacheMessage = friendlyError(error) }
                     }
                 }
-                if let cacheMessage { Text(cacheMessage).font(.caption).foregroundStyle(.secondary) }
-                if reading.needsRecovery { Button("Recover saved data") { confirmation = .recover } }
-            } header: { Text("On this device") } footer: { Text("Bookmarks and history stay on your device. Your device backup may include them. Clearing the cache keeps bookmarks and history.") }
-            Section("About") {
-                NavigationLink("Help & support") { SupportView() }
-                NavigationLink("Privacy") { PrivacyView() }
-                NavigationLink("Acknowledgments") { AcknowledgmentsView() }
-                LabeledContent("Version", value: "\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"))")
+                if let cacheMessage { Text(cacheMessage).font(.subheadline).foregroundStyle(EmberStyle.secondaryText) }
+            } footer: { Text("Clearing cached feeds keeps your bookmarks and history.") }
+            if reading.needsRecovery {
+                Section { Button("Recover saved data") { confirmation = .recover } }
             }
-            Section {
-                Text("Ember is an independent Hacker News reader. It is not affiliated with Y Combinator.")
-                    .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .center).multilineTextAlignment(.center)
-            }.listRowBackground(Color.clear)
-        }
-        .readingWidth().navigationTitle("Settings")
+        }.readingWidth().navigationTitle("Storage").navigationBarTitleDisplayMode(.inline)
         .confirmationDialog(confirmation?.rawValue ?? "", isPresented: Binding(get: { confirmation != nil }, set: { if !$0 { confirmation = nil } }), titleVisibility: .visible) {
             Button(confirmation?.rawValue ?? "Confirm", role: .destructive) {
                 switch confirmation {
@@ -81,7 +106,7 @@ struct SettingsView: View {
             ForEach(reading.blockedUsers, id: \.self) { name in
                 HStack { Text(name); Spacer(); Button("Unblock") { reading.unblock(name) }.buttonStyle(.borderless) }
             }
-        }.navigationTitle("Blocked users").navigationBarTitleDisplayMode(.inline)
+        }.readingWidth().navigationTitle("Blocked users").navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -112,10 +137,10 @@ struct PrivacyView: View {
 struct SupportView: View {
     var body: some View {
         List {
-            Section("Reading") { Text("Tap a story to open its discussion, then Read article to open the website. Swipe right on a story for a direct Read action. Long-press a story for sharing and other actions.") }
+            Section("Reading") { Text("Tap a story for its discussion. Tap the title or Read article to open the website. Swipe right on a story to read it directly.") }
             Section("Saving") { Text("Swipe left on a story, or tap the bookmark in a discussion. Saved stories appear in the Saved tab. Bookmarks preserve the story details and any loaded post text; external articles are not downloaded for offline use.") }
             Section("Comments") { Text("Tap the minus beside a comment to collapse its thread. Show replies loads the next replies in Hacker News order. Long-press a comment to reply on HN, share, report, or block its author.") }
-            Section("Accounts") { Text("Sign in through Settings → Sign in on Hacker News. Voting, replying, and submitting use the official website because the public API does not provide these actions. Bookmarks in Ember are separate from HN favorites.") }
+            Section("Accounts") { Text("Sign in from Settings to vote, reply, or submit on the Hacker News website. Ember bookmarks are separate from your HN favorites.") }
             Section("Troubleshooting") { Text("Pull down to refresh. If you’re offline, previously loaded feeds and saved story details remain available. Check your connection if new comments or search results cannot load.") }
             if let support = Bundle.main.object(forInfoDictionaryKey: "EmberSupportURL") as? String,
                let url = WebURL.validated(support), !support.contains("$(") {

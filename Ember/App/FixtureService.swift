@@ -5,10 +5,10 @@ import Foundation
 
 struct FixtureService: HNService {
     static let stories: [HNItem] = [
-        HNItem(id: 1001, type: "story", by: "julia", time: 1_789_118_000, title: "A small web is a beautiful web", url: "https://example.com/small-web", score: 284, descendants: 86, kids: [2001, 2002, 2003]),
+        HNItem(id: 1001, type: "story", by: "julia", time: 1_789_118_000, title: "A small web is a beautiful web", url: "https://example.com/small-web", score: 284, descendants: 4, kids: [2001, 2002, 2003]),
         HNItem(id: 1002, type: "story", by: "marcel", time: 1_789_114_400, title: "Building a search engine from scratch", url: "https://example.com/search", score: 196, descendants: 42),
         HNItem(id: 1003, type: "story", by: "sara", time: 1_789_110_800, title: "Show HN: I made a tiny music synthesizer", url: "https://example.com/synth", score: 172, descendants: 31),
-        HNItem(id: 1004, type: "story", by: "tomas", time: 1_789_107_200, title: "Ask HN: What are you working on this month?", text: "What have you been making lately?<p>Small projects are welcome, too.", score: 139, descendants: 118),
+        HNItem(id: 1004, type: "story", by: "tomas", time: 1_789_107_200, title: "Ask HN: What are you working on this month?", text: "What have you been making lately?<p>Small projects are welcome, too.", score: 139, descendants: 0),
         HNItem(id: 1005, type: "story", by: "maya", time: 1_789_103_600, title: "The quiet craft of software maintenance", url: "https://example.com/maintenance", score: 121, descendants: 27),
         HNItem(id: 1006, type: "story", by: "eli", time: 1_789_100_000, title: "Why old maps still matter", url: "https://example.com/maps", score: 97, descendants: 19)
     ]

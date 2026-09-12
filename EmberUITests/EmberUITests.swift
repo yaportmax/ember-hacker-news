@@ -125,6 +125,24 @@ import XCTest
         attach(collections, name: "Audit-08-History-Empty")
         selectTab("Settings", in: collections)
         attach(collections, name: "Audit-09-Settings")
+        collections.buttons["Reading preferences"].tap()
+        XCTAssertTrue(collections.switches["Use Reader when available"].waitForExistence(timeout: 5))
+        attach(collections, name: "Audit-19-Reading-Preferences")
+        collections.switches["Open in default browser"].tap()
+        XCTAssertFalse(collections.switches["Use Reader when available"].exists)
+        collections.switches["Open in default browser"].tap()
+        collections.navigationBars.buttons.element(boundBy: 0).tap()
+        collections.buttons["Hidden content"].tap()
+        attach(collections, name: "Audit-20-Hidden-Content")
+        collections.buttons["Blocked users (0)"].tap()
+        attach(collections, name: "Audit-21-Blocked-Empty")
+        collections.navigationBars.buttons.element(boundBy: 0).tap()
+        collections.navigationBars.buttons.element(boundBy: 0).tap()
+        collections.buttons["Storage"].tap()
+        attach(collections, name: "Audit-22-Storage")
+        collections.buttons["Clear offline feed cache"].tap()
+        XCTAssertTrue(collections.staticTexts["Offline feed cache cleared."].waitForExistence(timeout: 5))
+        collections.navigationBars.buttons.element(boundBy: 0).tap()
         collections.swipeUp()
         attach(collections, name: "Audit-10-Settings-Lower")
         reveal(collections.buttons["Help & support"], in: collections)
@@ -140,6 +158,10 @@ import XCTest
         discussion.buttons["story-1001"].tap()
         XCTAssertTrue(discussion.buttons["collapse-2001"].waitForExistence(timeout: 5))
         attach(discussion, name: "Audit-13-Discussion")
+        discussion.buttons["story-author"].tap()
+        XCTAssertTrue(discussion.staticTexts["Karma"].waitForExistence(timeout: 5))
+        attach(discussion, name: "Audit-23-Profile")
+        discussion.navigationBars.buttons.element(boundBy: 0).tap()
         let replies = discussion.buttons["replies-2001"]
         reveal(replies, in: discussion); replies.tap()
         XCTAssertTrue(discussion.staticTexts["comment-text-3001"].waitForExistence(timeout: 5))
@@ -148,6 +170,32 @@ import XCTest
         let offline = launch(["--offline"])
         XCTAssertTrue(offline.staticTexts["You’re offline. Check your connection and try again."].waitForExistence(timeout: 10))
         attach(offline, name: "Audit-15-Offline-Empty")
+    }
+
+    func testArticleAndTitleOpenBrowser() {
+        let app = launch()
+        XCTAssertTrue(app.buttons["story-1001"].waitForExistence(timeout: 10))
+        app.buttons["story-1001"].tap()
+        for identifier in ["read-article", "article-title"] {
+            XCTAssertTrue(app.buttons[identifier].waitForExistence(timeout: 5))
+            app.buttons[identifier].tap()
+            XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 10))
+            app.buttons["Done"].tap()
+            XCTAssertTrue(app.buttons["bookmark-story"].waitForExistence(timeout: 5))
+        }
+    }
+
+    func testJobsDoNotInviteComments() {
+        let app = launch()
+        XCTAssertTrue(app.buttons["feed-menu"].waitForExistence(timeout: 5))
+        app.buttons["feed-menu"].tap()
+        app.buttons["Jobs"].tap()
+        XCTAssertTrue(app.buttons["story-1007"].waitForExistence(timeout: 10))
+        app.buttons["story-1007"].tap()
+        XCTAssertTrue(app.buttons["read-article"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["read-article"].label, "View job")
+        XCTAssertFalse(app.staticTexts["Quiet for now"].exists)
+        attach(app, name: "Audit-24-Job")
     }
 
     func testAuditLargeText() {

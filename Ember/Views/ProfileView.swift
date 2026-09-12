@@ -21,7 +21,9 @@ struct ProfileView: View {
                 }
                 if let about = user.about, !about.isEmpty { Section("About") { RichText(about).padding(.vertical, 8) } }
                 Section {
-                    Button("View profile and submissions on HN", systemImage: "arrow.up.right.square") { app.open(HNLinks.user(username)) }
+                    Button("Profile on Hacker News", systemImage: "arrow.up.right.square") { app.open(HNLinks.user(username)) }
+                }
+                Section {
                     if reading.isBlocked(username) {
                         Button("Unblock user", systemImage: "person.crop.circle.badge.checkmark") { reading.unblock(username) }
                     } else {

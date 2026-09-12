@@ -19,9 +19,9 @@ struct SavedView: View {
                 Text("History").tag(true)
             }.pickerStyle(.segmented).listRowSeparator(.hidden).padding(.vertical, 8)
             if stories.isEmpty {
-                EmptyState(title: query.isEmpty ? (showHistory ? "Your reading history" : "Keep the good ones") : "No matches",
+                EmptyState(title: query.isEmpty ? (showHistory ? "No reading history" : "No saved stories") : "No matches",
                            symbol: showHistory ? "clock" : "bookmark",
-                           detail: query.isEmpty ? (showHistory ? "Stories you open will appear here." : "Swipe left on a story or tap its bookmark to save it here.") : "Try a different title or website.")
+                           detail: query.isEmpty ? (showHistory ? "Stories you open will appear here." : "Tap a story’s bookmark to keep it here.") : "Try a different title or website.")
                     .listRowSeparator(.hidden)
             }
             ForEach(stories) { saved in
@@ -30,6 +30,6 @@ struct SavedView: View {
         }
         .listStyle(.plain).readingWidth()
         .navigationTitle("Saved")
-        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Filter saved stories")
+        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .automatic), prompt: showHistory ? "Search reading history" : "Search saved stories")
     }
 }
