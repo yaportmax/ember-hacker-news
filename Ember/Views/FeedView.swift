@@ -63,10 +63,10 @@ struct FeedView: View {
             Divider()
             Toggle("Hide read stories", isOn: $hideRead)
         } label: {
-            HStack(spacing: 6) {
-                Text(feed.title).font(.headline)
+            HStack(spacing: 8) {
+                Text(feed.title).font(.largeTitle.bold())
                 Image(systemName: "chevron.down")
-                    .font(.caption.weight(.semibold))
+                    .font(.body.weight(.semibold))
                     .foregroundStyle(EmberStyle.secondaryText)
             }
             .foregroundStyle(.primary)
@@ -74,6 +74,7 @@ struct FeedView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .tint(Color(uiColor: .label))
         .accessibilityLabel("Choose feed, \(feed.title) selected")
         .accessibilityIdentifier("feed-menu")
     }
