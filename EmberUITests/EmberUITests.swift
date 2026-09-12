@@ -138,7 +138,7 @@ import XCTest
         app.buttons["feed-menu"].tap()
         attach(app, name: "Audit-02-Feed-Menu")
         app.buttons["Ask HN"].firstMatch.tap()
-        XCTAssertTrue(app.navigationBars["Ask HN"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["feed-menu"].label, "Choose feed, Ask HN selected")
         XCTAssertTrue(app.buttons["story-1004"].waitForExistence(timeout: 5))
         app.buttons["story-1004"].tap()
         XCTAssertTrue(app.buttons["bookmark-story"].waitForExistence(timeout: 5))
@@ -213,6 +213,40 @@ import XCTest
         let offline = launch(["--offline"])
         XCTAssertTrue(offline.staticTexts["You’re offline. Check your connection and try again."].waitForExistence(timeout: 10))
         attach(offline, name: "Audit-15-Offline-Empty")
+    }
+
+    func testFeedHeaderSwitchesAndRestoresSelection() {
+        let app = launch()
+        let menu = app.buttons["feed-menu"]
+        XCTAssertTrue(app.buttons["story-1001"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.buttons.matching(identifier: "feed-menu").count, 1)
+        XCTAssertEqual(menu.label, "Choose feed, Top selected")
+        XCTAssertLessThan(app.navigationBars.firstMatch.frame.height, 80, "The feed header should fit one compact navigation row.")
+        XCTAssertLessThan(menu.frame.midX, app.frame.midX)
+        XCTAssertLessThan(app.buttons["story-1001"].frame.minY - menu.frame.maxY, 40, "Stories should begin directly below the header.")
+
+        menu.tap()
+        app.buttons["Ask HN"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["story-1004"].waitForExistence(timeout: 5))
+        XCTAssertEqual(menu.label, "Choose feed, Ask HN selected")
+        attach(app, name: "Header-01-Ask-Selected")
+        app.buttons["story-1004"].tap()
+        XCTAssertTrue(app.buttons["bookmark-story"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(menu.isHittable)
+        XCTAssertEqual(menu.label, "Choose feed, Ask HN selected")
+
+        app.terminate()
+        let restored = launch(["--preserve-state"])
+        XCTAssertTrue(restored.buttons["story-1004"].waitForExistence(timeout: 10))
+        XCTAssertEqual(restored.buttons["feed-menu"].label, "Choose feed, Ask HN selected")
+        restored.buttons["feed-menu"].tap()
+        restored.buttons["Top"].firstMatch.tap()
+        XCTAssertTrue(restored.buttons["story-1001"].waitForExistence(timeout: 5))
+        XCTAssertEqual(restored.buttons["feed-menu"].label, "Choose feed, Top selected")
+        restored.swipeUp()
+        XCTAssertTrue(restored.buttons["feed-menu"].isHittable, "Feed switching stays available while scrolling.")
+        attach(restored, name: "Header-02-Scrolled")
     }
 
     func testArticleAndTitleOpenBrowser() {

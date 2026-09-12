@@ -5,7 +5,6 @@ struct FeedView: View {
     @AppStorage("selectedFeed") private var selectedFeed = Feed.top.rawValue
     @AppStorage("hideReadStories") private var hideRead = false
     @Environment(ReadingStore.self) private var reading
-    @Environment(\.horizontalSizeClass) private var sizeClass
 
     init(service: any HNService, cache: FeedCache) { _model = State(initialValue: FeedModel(service: service, cache: cache)) }
     private var feed: Feed { Feed(rawValue: selectedFeed) ?? .top }
@@ -22,7 +21,7 @@ struct FeedView: View {
                 HStack { Spacer(); ProgressView("Loading stories…"); Spacer() }.padding(.vertical, 60).listRowSeparator(.hidden)
             } else if visible.isEmpty, model.error == nil {
                 EmptyState(title: model.items.isEmpty ? "No stories yet" : "You’re caught up", symbol: "text.alignleft",
-                           detail: model.items.isEmpty ? "Pull to refresh in a moment." : "Choose another feed, or show read stories from the Feeds menu.")
+                           detail: model.items.isEmpty ? "Pull to refresh in a moment." : "Tap the feed name above to choose another feed or show read stories.")
                     .listRowSeparator(.hidden)
             }
             ForEach(visible) { item in
@@ -42,20 +41,40 @@ struct FeedView: View {
         }
         .listStyle(.plain)
         .readingWidth()
-        .navigationTitle(feed.title)
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Picker("Feed", selection: $selectedFeed) {
-                        ForEach(Feed.allCases) { feed in Text(feed.title).tag(feed.rawValue) }
-                    }
-                    Divider()
-                    Toggle("Hide read stories", isOn: $hideRead)
-                } label: { HStack(spacing: 4) { Text(sizeClass == .regular ? feed.title : "Feeds"); Image(systemName: "chevron.down").font(.caption.weight(.semibold)) }.font(.subheadline) }
-                .accessibilityLabel("Choose feed, \(feed.title) selected").accessibilityIdentifier("feed-menu")
+            if #available(iOS 26.0, *) {
+                ToolbarItem(placement: .topBarLeading) { feedPicker }
+                    .sharedBackgroundVisibility(.hidden)
+            } else {
+                ToolbarItem(placement: .topBarLeading) { feedPicker }
             }
         }
         .refreshable { await model.refresh() }
         .task(id: selectedFeed) { await model.load(feed) }
+    }
+
+    private var feedPicker: some View {
+        Menu {
+            Picker("Feed", selection: $selectedFeed) {
+                ForEach(Feed.allCases) { feed in Text(feed.title).tag(feed.rawValue) }
+            }
+            Divider()
+            Toggle("Hide read stories", isOn: $hideRead)
+        } label: {
+            HStack(spacing: 6) {
+                Text(feed.title).font(.headline)
+                Image(systemName: "chevron.down")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(EmberStyle.secondaryText)
+            }
+            .foregroundStyle(.primary)
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Choose feed, \(feed.title) selected")
+        .accessibilityIdentifier("feed-menu")
     }
 }
