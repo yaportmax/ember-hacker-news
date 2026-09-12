@@ -39,12 +39,14 @@ The final capture review also found that app-window screenshots were cropped dur
 
 [Inspected native search prompt](before/native-search-prompt.png) · [Inspected saved-search prompt](before/native-saved-search-prompt.png)
 
-## Before captures
+## Before and after
 
-- [Story hierarchy](before/audit-01-stories.png)
-- [Search results with missing filters](before/audit-05-search-results.png)
-- [Largest text: fixed article button](before/audit-17-large-text-discussion.png)
-- [Largest text: comment obstruction](before/audit-18-large-text-comments.png)
+| Review | Before | After |
+| --- | --- | --- |
+| Story hierarchy | [View](before/audit-01-stories.png) | [View](../screenshots/iphone-audit-01-stories.png) |
+| Search filters with a query | [View](before/audit-05-search-results.png) | [View](../screenshots/iphone-audit-05-search-results.png) |
+| Largest text: article action | [View](before/audit-17-large-text-discussion.png) | [View](../screenshots/iphone-audit-17-large-text-discussion.png) |
+| Largest text: reading comments | [View](before/audit-18-large-text-comments.png) | [View](../screenshots/iphone-audit-18-large-text-comments.png) |
 
 ## Walkthrough scope
 
@@ -54,7 +56,7 @@ Captures use explicit debug fixtures, including consistent counts for discussion
 
 ## Validation status
 
-The baseline run reproduced a real search-controls failure. This document is an active review record until the final native gate and screenshot review are recorded here.
+The baseline run reproduced a real search-controls failure. [Final run 34704411398](https://github.com/yaportmax/ember-hacker-news/actions/runs/34704411398) passed all 30 core tests, including the live API check, all 13 UI tests on each device, and the unsigned Release build. [The final gallery](../SCREENSHOTS.md) contains 39 direct simulator captures per device; the reviewed source and validation receipt match.
 
 During the review, UI-test launch arguments were also replaced with resettable test preferences: fixed command-line defaults had prevented tests from actually changing a feed or density preference. The release app never uses this test setup. Failure recordings also exposed tests tapping the label area of a switch and the underlying storage row instead of the confirmation. Tests now target the switch thumb, assert its value, and identify the confirmation explicitly.
 

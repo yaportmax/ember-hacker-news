@@ -1,12 +1,13 @@
 {
-  "validated_at": "2026-09-11T20:27:56.963058+00:00",
-  "source_sha256": "a7fcc6436800bca2203b19af1a79f8494087aba900a7f487e018fd8b29e3d2df",
+  "validated_at": "2026-09-12T16:38:35.417506+00:00",
+  "source_sha256": "6218a4c634db6f0464598308da694f59b42301217499da8d56b0bd901e8c84af",
   "xcode": "Xcode 26.6\nBuild version 17F113",
   "iphone": "iPhone 17 Pro",
   "ipad": "iPad Pro 13-inch (M5)",
   "results": [
-    "build/iPhone-20260911T200848Z.xcresult",
-    "build/iPad-20260911T200848Z.xcresult"
+    "build/iPhone.xcresult",
+    "build/iPad.xcresult"
   ],
-  "signed": false
+  "signed": false,
+  "live_api_checked": true
 }

@@ -2,7 +2,7 @@
 
 A minimal native Hacker News reader for iPhone and iPad. Swift 6, SwiftUI, iOS 17+. No packages, backend, advertisements, or analytics.
 
-**Status:** The current reading-experience refinement is under native validation. The [previous native validation passed](https://github.com/yaportmax/ember-hacker-news/actions/runs/34642526701): 29 deterministic unit tests, all six UI tests on iPhone and iPad, and an unsigned Release device build with Xcode 26.6. Signing, TestFlight, and real-device review remain. See `Release/VALIDATION.md` for evidence.
+**Status:** [native validation passed](https://github.com/yaportmax/ember-hacker-news/actions/runs/34704411398): 29 deterministic core tests plus the live API test, all 13 UI tests on each of iPhone and iPad, and an unsigned Release device build with Xcode 26.6. Signing, TestFlight, and real-device review remain. See `Release/VALIDATION.md` for evidence.
 
 ## Actual app screenshots
 
