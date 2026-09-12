@@ -1,0 +1,81 @@
+name: Preserve simulator evidence
+on:
+  workflow_run:
+    workflows: [iOS validation]
+    types: [completed]
+permissions:
+  actions: read
+  contents: write
+jobs:
+  preserve:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ios-*-screenshots
+          path: ${{ runner.temp }}/native-evidence
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-validation
+          path: ${{ runner.temp }}/native-evidence
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+      - name: Preserve successful native captures
+        env:
+          VALIDATED_SHA: ${{ github.event.workflow_run.head_sha }}
+          VALIDATED_RUN: ${{ github.event.workflow_run.id }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re, shutil, subprocess, sys
+          from pathlib import Path
+          sys.path.insert(0, 'scripts')
+          import release
+          root = Path(os.environ['RUNNER_TEMP']) / 'native-evidence'
+          receipt = json.loads((root / 'validation.json').read_text())
+          assert receipt['source_sha256'] == release.fingerprint()
+          output = root / 'published'
+          output.mkdir()
+          counts = {}
+          for device in ['iPhone', 'iPad']:
+              source = root / f'ios-{device}-screenshots'
+              target = output / device
+              target.mkdir()
+              for test in json.loads((source / 'manifest.json').read_text()):
+                  for attachment in test['attachments']:
+                      name = attachment.get('suggestedHumanReadableName', '').split('_')[0]
+                      if not re.fullmatch(r'(?:Audit-|Header-|0[1-4]-)[A-Za-z0-9-]+', name):
+                          continue
+                      filename = attachment['exportedFileName']
+                      assert Path(filename).name == filename and filename.endswith('.png')
+                      image = source / filename
+                      assert image.read_bytes()[:8] == b'\x89PNG\r\n\x1a\n'
+                      assert not (target / (name + '.png')).exists()
+                      shutil.copyfile(image, target / (name + '.png'))
+              counts[device] = len(list(target.glob('*.png')))
+              assert counts[device] > 0
+          shutil.copyfile(root / 'validation.json', output / 'validation.json')
+          sha = os.environ['VALIDATED_SHA']
+          run_id = os.environ['VALIDATED_RUN']
+          assert re.fullmatch(r'[a-f0-9]{40}', sha) and run_id.isdecimal()
+          (output / 'README.md').write_text(f'# Native simulator evidence\n\nSource: `{sha}`\n\n[Successful validation](https://github.com/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{run_id})\n\nDirect UI-test captures using deterministic fixtures. Normal app launches load live data.\n\n' + '\n'.join(f'- {device}: {count} captures' for device, count in counts.items()) + '\n')
+          branch = f'evidence/{sha}'
+          def git(*args): subprocess.run(['git', *args], check=True)
+          # Use a separate evidence branch; never move main or change app source.
+          git('checkout', '--orphan', branch)
+          git('rm', '-rf', '.')
+          for path in output.iterdir():
+              if path.is_dir(): shutil.copytree(path, path.name)
+              else: shutil.copyfile(path, path.name)
+          git('config', 'user.name', 'github-actions[bot]')
+          git('config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com')
+          git('add', 'iPhone', 'iPad', 'README.md', 'validation.json')
+          git('commit', '-m', f'Preserve native evidence for {sha} [skip ci]')
+          git('push', 'origin', f'HEAD:refs/heads/{branch}')
+          PY
