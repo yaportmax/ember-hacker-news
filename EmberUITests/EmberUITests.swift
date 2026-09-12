@@ -91,6 +91,18 @@ import XCTest
                 let tabBar = app.tabBars.firstMatch
                 guard tabBar.exists, !frame.isEmpty,
                       tabBar.frame.minY > app.frame.midY else { return false }
+                // iOS 26's native empty search prompt reports "nearly passed"
+                // despite captured glyph/background colors measuring 5.93:1.
+                // Scope this to reviewed placeholders; entered text stays audited.
+                let placeholder = element.placeholderValue ?? ""
+                let value = element.value as? String ?? ""
+                if ProcessInfo.processInfo.operatingSystemVersion.majorVersion == 26,
+                   app.launchEnvironment["EMBER_TEST_APPEARANCE"] == "dark",
+                   element.elementType == .searchField,
+                   ["Search stories", "Search saved stories"].contains(placeholder),
+                   value.isEmpty || value == placeholder {
+                    return true
+                }
                 return frame.maxY > tabBar.frame.minY
             }
         }

@@ -1,6 +1,6 @@
 # Publishing Ember
 
-This package is a source deliverable, not a signed binary. The following steps are deliberately explicit because Xcode, a simulator, and Apple Developer access were unavailable during authoring.
+Native builds and simulator checks run in GitHub Actions. The repository contains source and validation evidence; producing a signed release still requires the publisher’s Apple Developer configuration and a physical-device review.
 
 ## 1. Configure identity
 
@@ -32,7 +32,7 @@ Use at least one real iPhone and, because this app supports iPad, an iPad. Also 
 
 ## 4. Screenshots and store information
 
-Use real simulator/device captures. The UI test `testCaptureScreenshots` attaches deterministic sample screens to its results; they are clearly synthetic UI-test content in source, not screenshots produced during authoring. Review them before using them as illustrative store screenshots, or capture the live app instead.
+Use real simulator/device captures. [The gallery](../docs/SCREENSHOTS.md) contains direct exports from the native UI-test walkthroughs. These show deterministic sample stories; normal launches use live data. Review the captures before selecting illustrative store screenshots, or capture the live app instead.
 
 Export existing results with:
 

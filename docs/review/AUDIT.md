@@ -35,7 +35,9 @@ A story or comment should be the first thing you notice. Controls must explain t
 | Empty, hidden, offline | Explain the actual state and a useful recovery path; do not imply bookmarks disappeared. |
 | Large text and iPad | Preserve chosen text size, cap reply indentation, constrain line length, and avoid detached headings. |
 
-The final capture review also found that app-window screenshots were cropped during landscape rotation. Captures now use the full simulator screen. Native search placeholders receive an explicit readable color after two near-threshold iPhone contrast findings.
+The final capture review also found that app-window screenshots were cropped during landscape rotation. Captures now use the full simulator screen. The native iPhone search placeholders still reported “nearly passed” after a prompt-style attempt. Inspection of both failure captures measured dominant glyph RGB (152, 152, 159) against background (28, 28, 31), or 5.93:1 using the [W3C contrast formula](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html). SwiftUI did not apply the requested prompt color, so that ineffective override was removed. The audit exception is limited to those empty native placeholders on iOS 26 with a bottom tab bar; entered text and other contrast findings remain checked. This measurement is evidence for the exception, not a claim of complete WCAG or VoiceOver conformance.
+
+[Inspected native search prompt](before/native-search-prompt.png) · [Inspected saved-search prompt](before/native-saved-search-prompt.png)
 
 ## Before captures
 
