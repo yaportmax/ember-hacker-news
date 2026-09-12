@@ -1,5 +1,7 @@
 name: Preserve simulator evidence
 on:
+  push:
+    branches: ['capture/*']
   workflow_run:
     workflows: [iOS validation]
     types: [completed]
@@ -8,29 +10,69 @@ permissions:
   contents: write
 jobs:
   preserve:
-    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main'
+    if: github.event_name == 'push' || (github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Resolve source and newest artifacts
+        id: evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re, urllib.request
+          run_id = os.environ.get('EVENT_RUN_ID') or os.environ['GITHUB_REF_NAME'].removeprefix('capture/')
+          assert run_id.isdecimal()
+          base = f'https://api.github.com/repos/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{run_id}'
+          def read(url):
+              request = urllib.request.Request(url, headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json'})
+              with urllib.request.urlopen(request) as response: return json.load(response)
+          run = read(base)
+          assert run['event'] == 'push' and run['head_branch'] == 'main' and run['name'] == 'iOS validation'
+          assert re.fullmatch(r'[a-f0-9]{40}', run['head_sha'])
+          artifacts = read(base + '/artifacts?per_page=100')['artifacts']
+          def latest(name):
+              matches = [a for a in artifacts if a['name'] == name and not a['expired']]
+              return str(max(matches, key=lambda a: (a['created_at'], a['id']))['id']) if matches else ''
+          values = {'sha': run['head_sha'], 'run_id': run_id, 'attempt': str(run['run_attempt']), 'status': run['conclusion'] or run['status'], 'phone': latest('ios-iPhone-screenshots'), 'pad': latest('ios-iPad-screenshots'), 'receipt': latest('release-validation')}
+          if values['status'] == 'success': assert all(values[k] for k in ['phone', 'pad', 'receipt'])
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              for key, value in values.items(): output.write(f'{key}={value}\n')
+          PY
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ steps.evidence.outputs.sha }}
       - uses: actions/download-artifact@v4
+        if: steps.evidence.outputs.phone != ''
         with:
-          pattern: ios-*-screenshots
-          path: ${{ runner.temp }}/native-evidence
-          run-id: ${{ github.event.workflow_run.id }}
+          artifact-ids: ${{ steps.evidence.outputs.phone }}
+          path: ${{ runner.temp }}/native-evidence/ios-iPhone-screenshots
+          run-id: ${{ steps.evidence.outputs.run_id }}
+          merge-multiple: true
           github-token: ${{ github.token }}
       - uses: actions/download-artifact@v4
+        if: steps.evidence.outputs.pad != ''
         with:
-          name: release-validation
-          path: ${{ runner.temp }}/native-evidence
-          run-id: ${{ github.event.workflow_run.id }}
+          artifact-ids: ${{ steps.evidence.outputs.pad }}
+          path: ${{ runner.temp }}/native-evidence/ios-iPad-screenshots
+          run-id: ${{ steps.evidence.outputs.run_id }}
+          merge-multiple: true
           github-token: ${{ github.token }}
-      - name: Preserve successful native captures
+      - uses: actions/download-artifact@v4
+        if: steps.evidence.outputs.status == 'success'
+        with:
+          artifact-ids: ${{ steps.evidence.outputs.receipt }}
+          path: ${{ runner.temp }}/native-evidence
+          run-id: ${{ steps.evidence.outputs.run_id }}
+          merge-multiple: true
+          github-token: ${{ github.token }}
+      - name: Preserve native captures and their validation status
         env:
-          VALIDATED_SHA: ${{ github.event.workflow_run.head_sha }}
-          VALIDATED_RUN: ${{ github.event.workflow_run.id }}
+          VALIDATED_SHA: ${{ steps.evidence.outputs.sha }}
+          VALIDATED_RUN: ${{ steps.evidence.outputs.run_id }}
+          RUN_STATUS: ${{ steps.evidence.outputs.status }}
+          RUN_ATTEMPT: ${{ steps.evidence.outputs.attempt }}
         run: |
           python3 - <<'PY'
           import json, os, re, shutil, subprocess, sys
@@ -38,15 +80,21 @@ jobs:
           sys.path.insert(0, 'scripts')
           import release
           root = Path(os.environ['RUNNER_TEMP']) / 'native-evidence'
-          receipt = json.loads((root / 'validation.json').read_text())
-          assert receipt['source_sha256'] == release.fingerprint()
+          status = os.environ['RUN_STATUS']
+          if status == 'success':
+              receipt = json.loads((root / 'validation.json').read_text())
+              assert receipt['source_sha256'] == release.fingerprint()
           output = root / 'published'
-          output.mkdir()
+          output.mkdir(parents=True)
           counts = {}
           for device in ['iPhone', 'iPad']:
               source = root / f'ios-{device}-screenshots'
               target = output / device
               target.mkdir()
+              if not (source / 'manifest.json').exists():
+                  assert status != 'success'
+                  counts[device] = 0
+                  continue
               for test in json.loads((source / 'manifest.json').read_text()):
                   for attachment in test['attachments']:
                       name = attachment.get('suggestedHumanReadableName', '').split('_')[0]
@@ -59,16 +107,17 @@ jobs:
                       assert not (target / (name + '.png')).exists()
                       shutil.copyfile(image, target / (name + '.png'))
               counts[device] = len(list(target.glob('*.png')))
-              assert counts[device] > 0
-          shutil.copyfile(root / 'validation.json', output / 'validation.json')
+              if status == 'success': assert counts[device] > 0
+          assert sum(counts.values()) > 0, 'No native captures available yet.'
+          if status == 'success': shutil.copyfile(root / 'validation.json', output / 'validation.json')
           sha = os.environ['VALIDATED_SHA']
           run_id = os.environ['VALIDATED_RUN']
           assert re.fullmatch(r'[a-f0-9]{40}', sha) and run_id.isdecimal()
-          (output / 'README.md').write_text(f'# Native simulator evidence\n\nSource: `{sha}`\n\n[Successful validation](https://github.com/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{run_id})\n\nDirect UI-test captures using deterministic fixtures. Normal app launches load live data.\n\n' + '\n'.join(f'- {device}: {count} captures' for device, count in counts.items()) + '\n')
-          branch = f'evidence/{sha}'
+          (output / 'README.md').write_text(f'# Native simulator evidence\n\nSource: `{sha}`\n\nRun status: **{status}**. A passing validation receipt is included only for a successful run.\n\n[Validation run](https://github.com/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{run_id})\n\nDirect UI-test captures using deterministic fixtures. Normal app launches load live data.\n\n' + '\n'.join(f'- {device}: {count} captures' for device, count in counts.items()) + '\n')
+          branch = f'evidence/{sha}' if status == 'success' else f'evidence/{sha}-run-{run_id}-{os.environ["RUN_ATTEMPT"]}-{status}'
           existing = subprocess.run(['git', 'ls-remote', '--exit-code', '--heads', 'origin', branch], capture_output=True)
           if existing.returncode == 0:
-              print(f'Successful evidence already preserved for {sha}.')
+              print(f'Evidence already preserved in {branch}.')
               sys.exit(0)
           if existing.returncode != 2:
               existing.check_returncode()
@@ -81,7 +130,8 @@ jobs:
               else: shutil.copyfile(path, path.name)
           git('config', 'user.name', 'github-actions[bot]')
           git('config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com')
-          git('add', 'iPhone', 'iPad', 'README.md', 'validation.json')
+          git('add', 'iPhone', 'iPad', 'README.md')
+          if status == 'success': git('add', 'validation.json')
           git('commit', '-m', f'Preserve native evidence for {sha} [skip ci]')
           git('push', 'origin', f'HEAD:refs/heads/{branch}')
           PY
