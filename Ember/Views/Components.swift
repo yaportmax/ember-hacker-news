@@ -206,8 +206,9 @@ private struct ReadingWidth: ViewModifier {
     let grouped: Bool
     @Environment(\.horizontalSizeClass) private var sizeClass
     func body(content: Content) -> some View {
-        content.frame(maxWidth: EmberStyle.measure).frame(maxWidth: .infinity)
+        let layout = content.frame(maxWidth: EmberStyle.measure).frame(maxWidth: .infinity)
             .background(grouped ? Color(uiColor: .systemGroupedBackground) : EmberStyle.canvas)
-            .navigationBarTitleDisplayMode(sizeClass == .regular ? .inline : .automatic)
+        if sizeClass == .regular { layout.navigationBarTitleDisplayMode(.inline) }
+        else { layout }
     }
 }
