@@ -27,7 +27,7 @@ struct SettingsView: View {
                 LabeledContent("Version", value: "\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"))")
             } header: { Text("About") } footer: { Text("An independent reader for Hacker News.") }
         }
-        .readingWidth().navigationTitle("Settings")
+        .readingWidth(grouped: true).navigationTitle("Settings")
     }
 }
 
@@ -47,7 +47,7 @@ private struct ReadingPreferencesView: View {
                 Toggle("Open in default browser", isOn: $externalBrowser)
                 if !externalBrowser { Toggle("Use Reader when available", isOn: $readerMode) }
             } header: { Text("Articles") } footer: { Text(externalBrowser ? "Articles open in the browser you chose in iOS Settings." : "Reader simplifies supported articles in the in-app browser.") }
-        }.readingWidth().navigationTitle("Reading preferences").navigationBarTitleDisplayMode(.inline)
+        }.readingWidth(grouped: true).navigationTitle("Reading preferences").navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -60,7 +60,7 @@ private struct HiddenContentView: View {
                 Button("Restore hidden stories (\(reading.archive.hiddenStories.count))") { reading.restoreHidden() }
                     .disabled(reading.archive.hiddenStories.isEmpty)
             } footer: { Text("Hide a story from its menu, or block an author from their profile. These choices apply only on this device.") }
-        }.readingWidth().navigationTitle("Hidden content").navigationBarTitleDisplayMode(.inline)
+        }.readingWidth(grouped: true).navigationTitle("Hidden content").navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -92,7 +92,7 @@ private struct StorageView: View {
             if reading.needsRecovery {
                 Section { Button("Recover saved data") { confirmation = .recover } }
             }
-        }.readingWidth().navigationTitle("Storage").navigationBarTitleDisplayMode(.inline)
+        }.readingWidth(grouped: true).navigationTitle("Storage").navigationBarTitleDisplayMode(.inline)
         .confirmationDialog(confirmation?.rawValue ?? "", isPresented: Binding(get: { confirmation != nil }, set: { if !$0 { confirmation = nil } }), titleVisibility: .visible) {
             Button(confirmation?.rawValue ?? "Confirm", role: .destructive) {
                 switch confirmation {
@@ -117,7 +117,7 @@ private struct BlockedUsersView: View {
             ForEach(reading.blockedUsers, id: \.self) { name in
                 HStack { Text(name); Spacer(); Button("Unblock") { reading.unblock(name) }.buttonStyle(.borderless) }
             }
-        }.readingWidth().navigationTitle("Blocked users").navigationBarTitleDisplayMode(.inline)
+        }.readingWidth(grouped: true).navigationTitle("Blocked users").navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -141,7 +141,7 @@ struct PrivacyView: View {
                 Link("Google privacy policy", destination: URL(string: "https://policies.google.com/privacy")!)
                 Link("Algolia privacy policy", destination: URL(string: "https://www.algolia.com/policies/privacy/")!)
             }
-        }.readingWidth().navigationTitle("Privacy").navigationBarTitleDisplayMode(.inline)
+        }.readingWidth(grouped: true).navigationTitle("Privacy").navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -157,7 +157,7 @@ struct SupportView: View {
                let url = WebURL.validated(support), !support.contains("$(") {
                 Section("Contact") { Link("Contact Ember support", destination: url) }
             }
-        }.readingWidth().navigationTitle("Help & support").navigationBarTitleDisplayMode(.inline)
+        }.readingWidth(grouped: true).navigationTitle("Help & support").navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -184,7 +184,7 @@ struct ReportView: View {
                let url = WebURL.validated(support), !support.contains("$(") {
                 Section { Link("Report to Ember support", destination: url) }
             }
-        }.readingWidth().navigationTitle("Report content").navigationBarTitleDisplayMode(.inline)
+        }.readingWidth(grouped: true).navigationTitle("Report content").navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -200,6 +200,6 @@ struct AcknowledgmentsView: View {
                 Link("HN Search", destination: URL(string: "https://hn.algolia.com")!)
             }
             Section("Built with Swift") { Text("Ember uses Apple’s native frameworks and has no third-party runtime dependencies.") }
-        }.readingWidth().navigationTitle("Acknowledgments").navigationBarTitleDisplayMode(.inline)
+        }.readingWidth(grouped: true).navigationTitle("Acknowledgments").navigationBarTitleDisplayMode(.inline)
     }
 }

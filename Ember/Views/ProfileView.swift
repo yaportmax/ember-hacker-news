@@ -25,7 +25,7 @@ struct ProfileView: View {
                 }
             }
         }
-        .readingWidth().navigationTitle(username).navigationBarTitleDisplayMode(.inline)
+        .readingWidth(grouped: true).navigationTitle(username).navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {

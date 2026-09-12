@@ -192,13 +192,15 @@ struct StoryActions: ViewModifier {
 
 extension View {
     func storyActions(_ item: HNItem) -> some View { modifier(StoryActions(item: item)) }
-    func readingWidth() -> some View { modifier(ReadingWidth()) }
+    func readingWidth(grouped: Bool = false) -> some View { modifier(ReadingWidth(grouped: grouped)) }
 }
 
 private struct ReadingWidth: ViewModifier {
+    let grouped: Bool
     @Environment(\.horizontalSizeClass) private var sizeClass
     func body(content: Content) -> some View {
         content.frame(maxWidth: EmberStyle.measure).frame(maxWidth: .infinity)
+            .background(grouped ? Color(uiColor: .systemGroupedBackground) : EmberStyle.canvas)
             .navigationBarTitleDisplayMode(sizeClass == .regular ? .inline : .automatic)
     }
 }
