@@ -23,16 +23,20 @@ struct ProfileView: View {
                 Section {
                     Button("Profile on Hacker News", systemImage: "arrow.up.right.square") { app.open(HNLinks.user(username)) }
                 }
-                Section {
+            }
+        }
+        .readingWidth().navigationTitle(username).navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
                     if reading.isBlocked(username) {
                         Button("Unblock user", systemImage: "person.crop.circle.badge.checkmark") { reading.unblock(username) }
                     } else {
                         Button("Block user", systemImage: "person.slash", role: .destructive) { confirmBlock = true }
                     }
-                }
+                } label: { Image(systemName: "ellipsis") }.accessibilityLabel("Profile actions")
             }
         }
-        .readingWidth().navigationTitle(username).navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .refreshable { await load() }
         .confirmationDialog("Block \(username)?", isPresented: $confirmBlock, titleVisibility: .visible) {

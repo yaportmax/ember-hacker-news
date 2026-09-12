@@ -10,32 +10,104 @@ concurrency:
   group: ios-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  verify:
+  core:
+    name: Core, live API, and Release build
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Show toolchain
-        run: xcodebuild -version
-      - name: Test and build
-        run: python3 scripts/release.py validate
+      - name: Validate services and build for devices
+        env:
+          EMBER_LIVE_TESTS: '1'
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          sys.path.insert(0, "scripts")
+          import release
+          version = release.require_macos()
+          release.static_checks()
+          release.run(["swift", "test", "-j", "1"])
+          release.run(["xcodebuild", "build", "-project", "Ember.xcodeproj", "-scheme", "Ember", "-configuration", "Release", "-destination", "generic/platform=iOS", "CODE_SIGNING_ALLOWED=NO"])
+          release.BUILD.mkdir(exist_ok=True)
+          (release.BUILD / "core.json").write_text(json.dumps({"kind": "core", "passed": True, "source_sha256": release.fingerprint(), "xcode": version}))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: checks-core
+          path: build/core.json
+          retention-days: 1
+  ui:
+    name: Test ${{ matrix.device }}
+    runs-on: macos-26
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [iPhone, iPad]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test native app
+        env:
+          TEST_DEVICE: ${{ matrix.device }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          sys.path.insert(0, "scripts")
+          import release
+          version = release.require_macos()
+          phone, tablet = release.choose_devices()
+          name = os.environ["TEST_DEVICE"]
+          device = phone if name == "iPhone" else tablet
+          release.BUILD.mkdir(exist_ok=True)
+          result = f"build/{name}.xcresult"
+          command = ["xcodebuild", "test", "-project", "Ember.xcodeproj", "-scheme", "Ember", "-derivedDataPath", "build/DerivedData", "CODE_SIGNING_ALLOWED=NO", "-destination", f"platform=iOS Simulator,id={device['udid']}", "-parallel-testing-enabled", "NO", "-resultBundlePath", result]
+          if name == "iPad": command.append("-only-testing:EmberUITests")
+          release.run(command)
+          (release.BUILD / f"{name}.json").write_text(json.dumps({"kind": name, "name": device["name"], "passed": True, "source_sha256": release.fingerprint(), "xcode": version, "result": result}))
+          PY
       - name: Export screenshots
         if: always()
-        shell: bash
-        run: |
-          shopt -s nullglob
-          for result in build/*.xcresult; do
-            destination="build/screenshots/$(basename "$result" .xcresult)"
-            mkdir -p "$destination"
-            xcrun xcresulttool export attachments --path "$result" --output-path "$destination"
-          done
-      - name: Preserve results
+        run: xcrun xcresulttool export attachments --path build/${{ matrix.device }}.xcresult --output-path build/screenshots
+      - uses: actions/upload-artifact@v4
         if: always()
-        uses: actions/upload-artifact@v4
         with:
-          name: ios-test-results
+          name: ios-${{ matrix.device }}-screenshots
+          path: build/screenshots/
           retention-days: 1
-          path: |
-            build/screenshots/
-            Release/validation.json
-          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        with:
+          name: checks-${{ matrix.device }}
+          path: build/${{ matrix.device }}.json
+          retention-days: 1
+  receipt:
+    name: Record validated source
+    needs: [core, ui]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: checks-*
+          merge-multiple: true
+          path: build/receipts
+      - name: Verify all results and write receipt
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          from datetime import datetime, timezone
+          from pathlib import Path
+          sys.path.insert(0, "scripts")
+          import release
+          checks = [json.loads(p.read_text()) for p in Path("build/receipts").glob("*.json")]
+          assert len(checks) == 3 and {c["kind"] for c in checks} == {"core", "iPhone", "iPad"}
+          assert all(c["passed"] and c["source_sha256"] == release.fingerprint() for c in checks)
+          assert len({c["xcode"] for c in checks}) == 1
+          by_kind = {c["kind"]: c for c in checks}
+          receipt = {"validated_at": datetime.now(timezone.utc).isoformat(), "source_sha256": release.fingerprint(), "xcode": checks[0]["xcode"], "iphone": by_kind["iPhone"]["name"], "ipad": by_kind["iPad"]["name"], "results": [by_kind[k]["result"] for k in ["iPhone", "iPad"]], "signed": False, "live_api_checked": True}
+          release.RECEIPT.write_text(json.dumps(receipt, indent=2) + "\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-validation
+          path: Release/validation.json
+          retention-days: 1

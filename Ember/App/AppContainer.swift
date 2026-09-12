@@ -22,6 +22,15 @@ final class AppContainer {
             .appendingPathComponent("Ember", isDirectory: true)
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
+            let defaults = UserDefaults.standard
+            if !ProcessInfo.processInfo.arguments.contains("--preserve-state") {
+                for (key, value) in ["selectedFeed": "top", "compactRows": false,
+                                     "hideReadStories": false, "dimReadStories": true,
+                                     "externalBrowser": false, "readerMode": true] as [String: Any] {
+                    defaults.set(value, forKey: key)
+                }
+            }
+            defaults.set(ProcessInfo.processInfo.environment["EMBER_TEST_APPEARANCE"] ?? "light", forKey: "appearance")
             let testing = manager.temporaryDirectory.appendingPathComponent("EmberUITests", isDirectory: true)
             if !ProcessInfo.processInfo.arguments.contains("--preserve-state") { try? manager.removeItem(at: testing) }
             service = FixtureService()

@@ -18,6 +18,7 @@ struct DiscussionView: View {
     var body: some View {
         List {
             storyHeader.listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 4, trailing: 20))
             if let error = model.error { InlineNotice(message: error) { Task { await reload() } }.listRowSeparator(.hidden) }
             if !model.story.isVisible {
                 InlineNotice(message: "This story has been removed from Hacker News.", symbol: "text.badge.xmark").listRowSeparator(.hidden)

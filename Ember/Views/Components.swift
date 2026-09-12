@@ -167,6 +167,7 @@ struct StoryActions: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
             .contextMenu {
                 if let url = item.articleURL { Button("Read article", systemImage: "safari") { reading.record(item); app.open(url) } }
                 Button(reading.isSaved(item.id) ? "Remove bookmark" : "Save story", systemImage: reading.isSaved(item.id) ? "bookmark.slash" : "bookmark") { reading.toggleBookmark(item) }
@@ -191,5 +192,13 @@ struct StoryActions: ViewModifier {
 
 extension View {
     func storyActions(_ item: HNItem) -> some View { modifier(StoryActions(item: item)) }
-    func readingWidth() -> some View { frame(maxWidth: EmberStyle.measure).frame(maxWidth: .infinity) }
+    func readingWidth() -> some View { modifier(ReadingWidth()) }
+}
+
+private struct ReadingWidth: ViewModifier {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    func body(content: Content) -> some View {
+        content.frame(maxWidth: EmberStyle.measure).frame(maxWidth: .infinity)
+            .navigationBarTitleDisplayMode(sizeClass == .regular ? .inline : .automatic)
+    }
 }

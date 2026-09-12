@@ -4,7 +4,8 @@ import XCTest
     private func launch(_ extra: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         let appearance = extra.contains("dark") ? "dark" : "light"
-        app.launchArguments = ["--ui-testing", "-appearance", appearance, "-selectedFeed", "top", "-hideReadStories", "NO", "-compactRows", "NO"] + extra.filter { !["-appearance", "dark", "light"].contains($0) }
+        app.launchEnvironment["EMBER_TEST_APPEARANCE"] = appearance
+        app.launchArguments = ["--ui-testing"] + extra.filter { !["-appearance", "dark", "light"].contains($0) }
         app.launch()
         return app
     }
@@ -36,6 +37,7 @@ import XCTest
         field.tap()
         field.typeText("zzzznomatch")
         XCTAssertTrue(app.staticTexts["No results"].waitForExistence(timeout: 5))
+        attach(app, name: "Audit-32-No-Results")
     }
 
     func testThreadCollapseAndReplyExpansion() {
@@ -59,11 +61,27 @@ import XCTest
         let offline = launch(["--preserve-state", "--offline"])
         XCTAssertTrue(offline.buttons["story-1001"].waitForExistence(timeout: 10))
         XCTAssertTrue(offline.staticTexts["You’re offline. Check your connection and try again."].waitForExistence(timeout: 5))
+        attach(offline, name: "Audit-31-Offline-Cached")
     }
 
     func testAppearanceAndAccessibility() throws {
         let app = launch(["-appearance", "dark"])
         XCTAssertTrue(app.buttons["story-1001"].waitForExistence(timeout: 10))
+        try auditAccessibility(app)
+        app.buttons["story-1001"].tap()
+        XCTAssertTrue(app.buttons["collapse-2001"].waitForExistence(timeout: 5))
+        attach(app, name: "Audit-25-Discussion-Dark")
+        try auditAccessibility(app)
+        selectTab("Saved", in: app)
+        try auditAccessibility(app)
+        selectTab("Search", in: app)
+        try auditAccessibility(app)
+        selectTab("Settings", in: app)
+        XCTAssertTrue(app.switches["Compact stories"].waitForExistence(timeout: 5))
+        try auditAccessibility(app)
+    }
+
+    private func auditAccessibility(_ app: XCUIApplication) throws {
         if #available(iOS 17.0, *) {
             try app.performAccessibilityAudit(for: [.contrast, .elementDetection, .hitRegion, .sufficientElementDescription]) { issue in
                 // iOS fades scroll content behind the floating tab bar. Audit
@@ -76,8 +94,6 @@ import XCTest
                 return frame.maxY > tabBar.frame.minY
             }
         }
-        selectTab("Settings", in: app)
-        XCTAssertTrue(app.switches["Compact stories"].waitForExistence(timeout: 5))
     }
 
     func testCaptureScreenshots() {
@@ -95,6 +111,9 @@ import XCTest
         let dark = launch(["-appearance", "dark"])
         XCTAssertTrue(dark.buttons["story-1001"].waitForExistence(timeout: 10))
         attach(dark, name: "04-Stories-Dark")
+        defer { XCUIDevice.shared.orientation = .portrait }
+        XCUIDevice.shared.orientation = .landscapeLeft
+        attach(dark, name: "Audit-33-Landscape-Stories")
     }
 
     func testAuditMainFlows() {
@@ -104,6 +123,7 @@ import XCTest
         app.buttons["feed-menu"].tap()
         attach(app, name: "Audit-02-Feed-Menu")
         app.buttons["Ask HN"].firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Ask HN"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["story-1004"].waitForExistence(timeout: 5))
         app.buttons["story-1004"].tap()
         XCTAssertTrue(app.buttons["bookmark-story"].waitForExistence(timeout: 5))
@@ -152,6 +172,12 @@ import XCTest
         reveal(collections.buttons["Privacy"], in: collections)
         collections.buttons["Privacy"].tap()
         attach(collections, name: "Audit-12-Privacy")
+        collections.swipeUp()
+        attach(collections, name: "Audit-34-Privacy-Lower")
+        collections.navigationBars.buttons.element(boundBy: 0).tap()
+        reveal(collections.buttons["Acknowledgments"], in: collections)
+        collections.buttons["Acknowledgments"].tap()
+        attach(collections, name: "Audit-35-Acknowledgments")
         collections.terminate()
         let discussion = launch()
         XCTAssertTrue(discussion.buttons["story-1001"].waitForExistence(timeout: 10))
@@ -196,6 +222,61 @@ import XCTest
         XCTAssertEqual(app.buttons["read-article"].label, "View job")
         XCTAssertFalse(app.staticTexts["Quiet for now"].exists)
         attach(app, name: "Audit-24-Job")
+    }
+
+    func testStorageConfirmationKeepsBookmarks() {
+        let app = launch()
+        XCTAssertTrue(app.buttons["story-1001"].waitForExistence(timeout: 10))
+        app.buttons["story-1001"].tap()
+        XCTAssertTrue(app.buttons["bookmark-story"].waitForExistence(timeout: 5))
+        app.buttons["bookmark-story"].tap()
+        selectTab("Settings", in: app)
+        app.buttons["Storage"].tap()
+        app.buttons["Clear reading history"].tap()
+        let message = app.staticTexts["This removes the selected data from this device and can’t be undone."]
+        XCTAssertTrue(message.waitForExistence(timeout: 5))
+        attach(app, name: "Audit-26-Clear-History-Confirmation")
+        let choices = app.buttons.matching(identifier: "Clear reading history")
+        choices.element(boundBy: choices.count - 1).tap()
+        selectTab("Saved", in: app)
+        XCTAssertTrue(app.buttons["story-1001"].waitForExistence(timeout: 5))
+        app.buttons["History"].tap()
+        XCTAssertTrue(app.staticTexts["No reading history"].waitForExistence(timeout: 5))
+    }
+
+    func testReportAndUnblockFlow() {
+        let app = launch()
+        XCTAssertTrue(app.buttons["story-1001"].waitForExistence(timeout: 10))
+        app.buttons["story-1001"].tap()
+        app.buttons["Discussion actions"].tap()
+        app.buttons["Report story"].tap()
+        XCTAssertTrue(app.buttons["Open item on Hacker News"].waitForExistence(timeout: 5))
+        attach(app, name: "Audit-27-Report")
+        app.buttons["Block julia on this device"].tap()
+        XCTAssertTrue(app.buttons["User blocked"].exists)
+        selectTab("Settings", in: app)
+        app.buttons["Hidden content"].tap()
+        app.buttons["Blocked users (1)"].tap()
+        XCTAssertTrue(app.buttons["Unblock"].waitForExistence(timeout: 5))
+        attach(app, name: "Audit-28-Blocked-User")
+        app.buttons["Unblock"].tap()
+        XCTAssertTrue(app.staticTexts["No blocked users"].waitForExistence(timeout: 5))
+    }
+
+    func testPollOptionsAndCompactLayout() {
+        let app = launch()
+        XCTAssertTrue(app.buttons["feed-menu"].waitForExistence(timeout: 5))
+        app.buttons["feed-menu"].tap()
+        app.buttons["New"].tap()
+        XCTAssertTrue(app.buttons["story-1008"].waitForExistence(timeout: 10))
+        app.buttons["story-1008"].tap()
+        XCTAssertTrue(app.staticTexts["Over morning coffee"].waitForExistence(timeout: 5))
+        attach(app, name: "Audit-29-Poll")
+        selectTab("Settings", in: app)
+        app.switches["Compact stories"].tap()
+        selectTab("Stories", in: app)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        attach(app, name: "Audit-30-Compact-Stories")
     }
 
     func testAuditLargeText() {

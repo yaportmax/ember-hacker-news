@@ -3,18 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @AppStorage("appearance") private var appearance = "system"
     @AppStorage("compactRows") private var compact = false
-    @AppStorage("dimReadStories") private var dimRead = true
-    @AppStorage("hideReadStories") private var hideRead = false
-    @AppStorage("readerMode") private var readerMode = true
-    @AppStorage("externalBrowser") private var externalBrowser = false
     @Environment(AppContainer.self) private var app
-    @Environment(ReadingStore.self) private var reading
-    @State private var confirmation: ClearAction?
-    @State private var cacheMessage: String?
-    enum ClearAction: String, Identifiable {
-        case history = "Clear reading history", bookmarks = "Remove all bookmarks", recover = "Recover saved data"
-        var id: String { rawValue }
-    }
 
     var body: some View {
         Form {
@@ -23,9 +12,9 @@ struct SettingsView: View {
                 Toggle("Compact stories", isOn: $compact)
             }
             Section("Reading") {
-                NavigationLink("Reading preferences") { readingPreferences }
-                NavigationLink("Hidden content") { hiddenContent }
-                NavigationLink("Storage") { storage }
+                NavigationLink("Reading preferences") { ReadingPreferencesView() }
+                NavigationLink("Hidden content") { HiddenContentView() }
+                NavigationLink("Storage") { StorageView() }
             }
             Section {
                 Button("Sign in on Hacker News", systemImage: "arrow.up.right") { app.open(HNLinks.login) }
@@ -39,34 +28,53 @@ struct SettingsView: View {
             } header: { Text("About") } footer: { Text("An independent reader for Hacker News.") }
         }
         .readingWidth().navigationTitle("Settings")
-
     }
+}
 
-    private var readingPreferences: some View {
+private struct ReadingPreferencesView: View {
+    @AppStorage("dimReadStories") private var dimRead = true
+    @AppStorage("hideReadStories") private var hideRead = false
+    @AppStorage("readerMode") private var readerMode = true
+    @AppStorage("externalBrowser") private var externalBrowser = false
+
+    var body: some View {
         Form {
-            Section("Stories") {
+            Section {
                 Toggle("Dim read stories", isOn: $dimRead)
                 Toggle("Hide read stories", isOn: $hideRead)
-            }
+            } header: { Text("Stories") } footer: { Text("Text size follows your device’s text settings.") }
             Section {
                 Toggle("Open in default browser", isOn: $externalBrowser)
                 if !externalBrowser { Toggle("Use Reader when available", isOn: $readerMode) }
             } header: { Text("Articles") } footer: { Text(externalBrowser ? "Articles open in the browser you chose in iOS Settings." : "Reader simplifies supported articles in the in-app browser.") }
-            Section { Text("Text size follows your device’s text settings.").font(.subheadline).foregroundStyle(EmberStyle.secondaryText) }
         }.readingWidth().navigationTitle("Reading preferences").navigationBarTitleDisplayMode(.inline)
     }
+}
 
-    private var hiddenContent: some View {
+private struct HiddenContentView: View {
+    @Environment(ReadingStore.self) private var reading
+    var body: some View {
         List {
             Section {
-                NavigationLink("Blocked users (\(reading.blockedUsers.count))") { blockedUsers }
+                NavigationLink("Blocked users (\(reading.blockedUsers.count))") { BlockedUsersView() }
                 Button("Restore hidden stories (\(reading.archive.hiddenStories.count))") { reading.restoreHidden() }
                     .disabled(reading.archive.hiddenStories.isEmpty)
             } footer: { Text("Hide a story from its menu, or block an author from their profile. These choices apply only on this device.") }
         }.readingWidth().navigationTitle("Hidden content").navigationBarTitleDisplayMode(.inline)
     }
+}
 
-    private var storage: some View {
+private struct StorageView: View {
+    @Environment(AppContainer.self) private var app
+    @Environment(ReadingStore.self) private var reading
+    @State private var confirmation: ClearAction?
+    @State private var cacheMessage: String?
+    enum ClearAction: String, Identifiable {
+        case history = "Clear reading history", bookmarks = "Remove all bookmarks", recover = "Recover saved data"
+        var id: String { rawValue }
+    }
+
+    var body: some View {
         Form {
             Section {
                 Button("Clear reading history", role: .destructive) { confirmation = .history }.disabled(reading.history.isEmpty)
@@ -99,8 +107,11 @@ struct SettingsView: View {
             Text(confirmation == .recover ? "Ember will keep a copy of the unreadable file and start a new local collection." : "This removes the selected data from this device and can’t be undone.")
         }
     }
+}
 
-    private var blockedUsers: some View {
+private struct BlockedUsersView: View {
+    @Environment(ReadingStore.self) private var reading
+    var body: some View {
         List {
             if reading.blockedUsers.isEmpty { EmptyState(title: "No blocked users", symbol: "person.crop.circle.badge.checkmark", detail: "Block someone from their profile or a comment’s menu.") }
             ForEach(reading.blockedUsers, id: \.self) { name in

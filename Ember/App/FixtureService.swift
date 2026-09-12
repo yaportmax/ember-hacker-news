@@ -23,11 +23,15 @@ struct FixtureService: HNService {
         if feed == .ask { return [1004] }
         if feed == .show { return [1003] }
         if feed == .jobs { return [1007] }
+        if feed == .new { return [1008] + Self.stories.map(\.id) }
         return Self.stories.map(\.id)
     }
     func item(_ id: Int, fresh: Bool) async throws -> HNItem? {
         if ProcessInfo.processInfo.arguments.contains("--offline") { throw URLError(.notConnectedToInternet) }
         if id == 1007 { return HNItem(id: 1007, type: "job", by: "team", time: 1_789_118_000, title: "Example company is hiring a Swift engineer", url: "https://example.com/jobs") }
+        if id == 1008 { return HNItem(id: 1008, type: "poll", by: "julia", time: 1_789_118_000, title: "Poll: When do you read Hacker News?", text: "Choose the time that fits your routine.", score: 42, descendants: 0, parts: [1009, 1010]) }
+        if id == 1009 { return HNItem(id: 1009, type: "pollopt", text: "Over morning coffee", score: 28) }
+        if id == 1010 { return HNItem(id: 1010, type: "pollopt", text: "At the end of the day", score: 14) }
         return (Self.stories + Self.comments).first { $0.id == id }
     }
     func user(_ name: String) async throws -> HNUser { HNUser(id: name, created: 1_420_070_400, karma: 12_483, about: "Building small, useful things.<p>Curious about software, cities, and the web.") }

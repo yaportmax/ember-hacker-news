@@ -24,6 +24,7 @@ struct SearchView: View {
                 .buttonStyle(.borderless).accessibilityLabel("Search filters")
                 .accessibilityValue("\(model.order.title), \(model.period.title)")
             }.listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
             if model.order != .relevant || model.period != .all {
                 Text("\(model.order.title) · \(model.period.title)")
                     .font(.caption).foregroundStyle(EmberStyle.secondaryText).listRowSeparator(.hidden)
