@@ -2,7 +2,7 @@
 
 A minimal native Hacker News reader for iPhone and iPad. Swift 6, SwiftUI, iOS 17+. No packages, backend, advertisements, or analytics.
 
-**Status:** [native validation passed](https://github.com/yaportmax/ember-hacker-news/actions/runs/34704411398): 29 deterministic core tests plus the live API test, all 13 UI tests on each of iPhone and iPad, and an unsigned Release device build with Xcode 26.6. Signing, TestFlight, and real-device review remain. See `Release/VALIDATION.md` for evidence.
+**Status:** [native validation passed](https://github.com/yaportmax/ember-hacker-news/actions/runs/34715669152): 29 deterministic core tests plus the live API test, all 14 UI tests on each of iPhone and iPad, and an unsigned Release device build with Xcode 26.6. Signing, TestFlight, and real-device review remain. See `Release/VALIDATION.md` for evidence.
 
 ## Actual app screenshots
 
@@ -58,7 +58,7 @@ python3 scripts/release.py validate
 
 This runs unit and UI tests on iPhone, UI tests on iPad, a Release build for a physical iOS device without signing, and static project checks. Results are stored in `build/`. It writes a validation receipt only after all steps succeed. Optional `--iphone` and `--ipad` arguments select simulator UDIDs explicitly.
 
-UI tests use synthetic fixtures only when **Debug** is launched with `--ui-testing`. Normal Debug builds use the live APIs. Release builds do not contain the fixture implementation. The screenshot test attaches real simulator captures to the test results. GitHub Actions runs iPhone and iPad checks concurrently, exports `ios-iPhone-screenshots` and `ios-iPad-screenshots`, and writes `release-validation` only when every check passes. Artifacts are retained for one day; selected captures are committed to the gallery. UI-test screenshots use synthetic stories, not the live feed.
+UI tests use synthetic fixtures only when **Debug** is launched with `--ui-testing`. Normal Debug builds use the live APIs. Release builds do not contain the fixture implementation. The screenshot test attaches real simulator captures to the test results. GitHub Actions runs iPhone and iPad checks concurrently, exports `ios-iPhone-screenshots` and `ios-iPad-screenshots`, and writes `release-validation` only when every check passes. Artifacts are retained for one day. Successful main-branch runs also preserve captures and the validation receipt in an `evidence/<source-commit>` branch; reviewed captures are committed to the gallery. UI-test screenshots use synthetic stories, not the live feed.
 
 ## Prepare a release
 

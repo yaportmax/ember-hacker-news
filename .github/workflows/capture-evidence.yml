@@ -66,6 +66,12 @@ jobs:
           assert re.fullmatch(r'[a-f0-9]{40}', sha) and run_id.isdecimal()
           (output / 'README.md').write_text(f'# Native simulator evidence\n\nSource: `{sha}`\n\n[Successful validation](https://github.com/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{run_id})\n\nDirect UI-test captures using deterministic fixtures. Normal app launches load live data.\n\n' + '\n'.join(f'- {device}: {count} captures' for device, count in counts.items()) + '\n')
           branch = f'evidence/{sha}'
+          existing = subprocess.run(['git', 'ls-remote', '--exit-code', '--heads', 'origin', branch], capture_output=True)
+          if existing.returncode == 0:
+              print(f'Successful evidence already preserved for {sha}.')
+              sys.exit(0)
+          if existing.returncode != 2:
+              existing.check_returncode()
           def git(*args): subprocess.run(['git', *args], check=True)
           # Use a separate evidence branch; never move main or change app source.
           git('checkout', '--orphan', branch)

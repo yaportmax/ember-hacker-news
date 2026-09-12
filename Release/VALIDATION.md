@@ -4,7 +4,7 @@ September 12, 2026. Native build and simulator validation passed for the reading
 
 ## Verified native run
 
-[GitHub Actions run 34704411398](https://github.com/yaportmax/ember-hacker-news/actions/runs/34704411398) validated commit `0d43f594fe682877b809b3f40c1cee6761144ec5` using Xcode 26.6 · Build version 17F113 on standard `macos-26` runners.
+[GitHub Actions run 34715669152](https://github.com/yaportmax/ember-hacker-news/actions/runs/34715669152) validated commit `b41e159e5c5a928d356a0db5110df234692440ae` using Xcode 26.6 · Build version 17F113 on standard `macos-26` runners.
 
 | Check | Result |
 | --- | --- |
@@ -12,14 +12,14 @@ September 12, 2026. Native build and simulator validation passed for the reading
 | Portable deterministic core tests | 29 passed, zero failures |
 | Live API integration test | Passed: all feeds, story, comments, profile, search |
 | iPhone simulator unit tests | 29 passed, zero failures; optional live test skipped here |
-| iPhone 17 Pro UI tests | All 13 passed |
-| iPad Pro 13-inch (M5) UI tests | All 13 passed |
+| iPhone 17 Pro UI tests | All 14 passed |
+| iPad Pro 13-inch (M5) UI tests | All 14 passed |
 | Release build for physical iOS devices | Passed, unsigned |
-| Simulator screenshot export | 39 captures per device |
-
-The iPad job was retried on unchanged source after its first attempt timed out while starting the native Safari service. The successful iPhone and core jobs were retained. The retry passed; physical-device browser startup remains part of the TestFlight review.
+| Simulator screenshot export | 41 captures per device |
 
 Repeated test executions across platforms are not additional distinct tests. The live service test is explicitly enabled in the core CI job; it remains opt-in for local package tests.
+
+The header refinement combines the active feed and its picker in a single leading inline control. Its dedicated regression test checks compact header height and content spacing, feed selection, return from a discussion, restored selection after relaunch, and continued availability after an upward swipe.
 
 UI checks cover navigation, feeds, article/title/menu browser entry and return, bookmarks across relaunch, search and empty results, offline relaunch, comment collapse/replies, profiles, reporting and unblocking, jobs, polls, compact rows, reading preferences, storage confirmation, dark-theme accessibility, large text, and rotation captures.
 
@@ -27,7 +27,9 @@ Contrast checks exclude content obscured by the iPhone bottom floating tab bar; 
 
 [The unchanged CI-generated receipt](Evidence/github-validation.json) was matched against the local source fingerprint before this documentation commit. Documentation and screenshot additions do not change the validated app source. The receipt is evidence of testing, not a signing credential.
 
-[View all actual app screenshots](../docs/SCREENSHOTS.md) and the [design review](../docs/review/AUDIT.md). The gallery is exported directly from this run using deterministic fixtures; normal app launches load live data.
+The reviewed gallery omits one iPhone capture covered by an iOS setup notification; all 41 original captures per device remain in the evidence branch. The short portrait feed fixture fits onscreen, so the upward-swipe assertion checks control availability after the gesture rather than proving a long scroll.
+
+[View the actual app screenshots](../docs/SCREENSHOTS.md) and the [design review](../docs/review/AUDIT.md). The gallery is exported directly from this run using deterministic fixtures; normal app launches load live data.
 
 ## Remaining publishing work
 

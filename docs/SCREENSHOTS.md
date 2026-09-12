@@ -1,6 +1,6 @@
 # Simulator screenshots
 
-Actual SwiftUI app captures from [validation run 34704411398](https://github.com/yaportmax/ember-hacker-news/actions/runs/34704411398), September 12, 2026. Each device has 39 captured views. Screens use synthetic test stories; normal launches load live Hacker News data.
+Actual SwiftUI app captures from [validation run 34715669152](https://github.com/yaportmax/ember-hacker-news/actions/runs/34715669152), September 12, 2026. This gallery contains 40 iPhone and 41 iPad captures. Screens use synthetic test stories; normal launches load live Hacker News data.
 
 [Reading experience review](review/AUDIT.md) includes findings and before captures.
 
@@ -45,3 +45,7 @@ Actual SwiftUI app captures from [validation run 34704411398](https://github.com
 | Landscape Stories | [View](screenshots/iphone-audit-33-landscape-stories.png) | [View](screenshots/ipad-audit-33-landscape-stories.png) |
 | Privacy Lower | [View](screenshots/iphone-audit-34-privacy-lower.png) | [View](screenshots/ipad-audit-34-privacy-lower.png) |
 | Acknowledgments | [View](screenshots/iphone-audit-35-acknowledgments.png) | [View](screenshots/ipad-audit-35-acknowledgments.png) |
+| Selected feed: Ask HN | Omitted: system notification | [View](screenshots/ipad-header-01-ask-selected.png) |
+| Feed after upward swipe | [View](screenshots/iphone-header-02-scrolled.png) | [View](screenshots/ipad-header-02-scrolled.png) |
+
+One iPhone capture was obscured by an iOS setup notification. The [raw evidence branch](https://github.com/yaportmax/ember-hacker-news/tree/evidence/b41e159e5c5a928d356a0db5110df234692440ae) preserves all 41 captures per device unchanged.
