@@ -4,7 +4,7 @@ September 12, 2026. Native build and simulator validation passed for the reading
 
 ## Verified native run
 
-[GitHub Actions run 34715669152](https://github.com/yaportmax/ember-hacker-news/actions/runs/34715669152) validated commit `b41e159e5c5a928d356a0db5110df234692440ae` using Xcode 26.6 · Build version 17F113 on standard `macos-26` runners.
+[GitHub Actions run 34718686387](https://github.com/yaportmax/ember-hacker-news/actions/runs/34718686387) validated commit `2dd47c578db43edfec0dcac26d580831f99f8f21` using Xcode 26.6 · Build version 17F113 on standard `macos-26` runners.
 
 | Check | Result |
 | --- | --- |
@@ -17,9 +17,11 @@ September 12, 2026. Native build and simulator validation passed for the reading
 | Release build for physical iOS devices | Passed, unsigned |
 | Simulator screenshot export | 41 captures per device |
 
+The iPad job was retried on unchanged source after Xcode timed out launching the app for the first test. The subsequent 13 tests, including the header checks, passed in the first attempt; the successful iPhone and core jobs were retained for the retry.
+
 Repeated test executions across platforms are not additional distinct tests. The live service test is explicitly enabled in the core CI job; it remains opt-in for local package tests.
 
-The header refinement combines the active feed and its picker in a single leading inline control. Its dedicated regression test checks compact header height and content spacing, feed selection, return from a discussion, restored selection after relaunch, and continued availability after an upward swipe.
+The feed header uses the requested large bold title with an adjacent dropdown arrow. System label color makes the title black in light mode and white in dark mode. The title and arrow remain a single leading control without the separate Feeds pill. Its dedicated regression test checks compact header height and content spacing, feed selection, return from a discussion, restored selection after relaunch, and continued availability after an upward swipe.
 
 UI checks cover navigation, feeds, article/title/menu browser entry and return, bookmarks across relaunch, search and empty results, offline relaunch, comment collapse/replies, profiles, reporting and unblocking, jobs, polls, compact rows, reading preferences, storage confirmation, dark-theme accessibility, large text, and rotation captures.
 
@@ -27,7 +29,7 @@ Contrast checks exclude content obscured by the iPhone bottom floating tab bar; 
 
 [The unchanged CI-generated receipt](Evidence/github-validation.json) was matched against the local source fingerprint before this documentation commit. Documentation and screenshot additions do not change the validated app source. The receipt is evidence of testing, not a signing credential.
 
-The reviewed gallery omits one iPhone capture covered by an iOS setup notification; all 41 original captures per device remain in the evidence branch. The short portrait feed fixture fits onscreen, so the upward-swipe assertion checks control availability after the gesture rather than proving a long scroll.
+The short portrait feed fixture fits onscreen, so the upward-swipe assertion checks control availability after the gesture rather than proving a long scroll.
 
 [View the actual app screenshots](../docs/SCREENSHOTS.md) and the [design review](../docs/review/AUDIT.md). The gallery is exported directly from this run using deterministic fixtures; normal app launches load live data.
 

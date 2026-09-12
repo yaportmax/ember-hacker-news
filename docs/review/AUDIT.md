@@ -10,7 +10,7 @@ A story or comment should be the first thing you notice. Controls must explain t
 
 | Priority | Finding | Change | Evidence |
 | --- | --- | --- | --- |
-| High | The iPhone feed header uses a large title and a detached floating Feeds control, leaving excessive space before the stories. | Combine the selected feed and its menu into one leading inline control. Remove the shared glass background while preserving a 44-point touch target and feed access during scrolling. | User screenshot; header-spacing, feed-switching, back-navigation, and relaunch regression checks. |
+| High | The iPhone feed header separates its title from a floating Feeds control, leaving excessive space before the stories. | Keep the requested large bold black title and put the dropdown arrow beside it in one leading control. Remove the shared glass background, preserve a 44-point touch target, and adapt the title to white in dark mode. | User screenshot; header-spacing, feed-switching, back-navigation, and relaunch regression checks. |
 | High | Search hides its filters after entering a query, on both devices. The baseline walkthrough stopped here. | Filters live beside the result count and remain available during search. | Baseline run 34699831096, Search Results; revised walkthrough exercises the menu with a query present. |
 | High | At the largest text size, the fixed article button consumes much of the iPhone's reading area. | A compact article link scrolls with the story header. The title opens the same article, and the discussion menu keeps access available after scrolling. | Baseline Large Text Discussion and Comments; revised large-text captures and browser-return tests. |
 | High | The pinned discussion heading overlays enlarged comment text. | Comment count is an ordinary scrolling heading. | Baseline Large Text Comments. |
@@ -44,7 +44,7 @@ The final capture review also found that app-window screenshots were cropped dur
 
 | Review | Before | After |
 | --- | --- | --- |
-| Compact feed header | [View](before/feed-header-iphone.png) | [View](../screenshots/iphone-01-stories-light.png) |
+| Feed title and menu | [View](before/feed-header-iphone.png) | [View](../screenshots/iphone-01-stories-light.png) |
 | Story hierarchy | [View](before/audit-01-stories.png) | [View](../screenshots/iphone-audit-01-stories.png) |
 | Search filters with a query | [View](before/audit-05-search-results.png) | [View](../screenshots/iphone-audit-05-search-results.png) |
 | Largest text: article action | [View](before/audit-17-large-text-discussion.png) | [View](../screenshots/iphone-audit-17-large-text-discussion.png) |
@@ -58,7 +58,7 @@ Captures use explicit debug fixtures, including consistent counts for discussion
 
 ## Validation status
 
-The baseline run reproduced a real search-controls failure. [Final run 34715669152](https://github.com/yaportmax/ember-hacker-news/actions/runs/34715669152) passed all 30 core tests, including the live API check, all 14 UI tests on each device, and the unsigned Release build. [The final gallery](../SCREENSHOTS.md) contains 40 iPhone and 41 iPad direct simulator captures; the reviewed source and validation receipt match.
+The baseline run reproduced a real search-controls failure. [Final run 34718686387](https://github.com/yaportmax/ember-hacker-news/actions/runs/34718686387) passed all 30 core tests, including the live API check, all 14 UI tests on each device, and the unsigned Release build. [The final gallery](../SCREENSHOTS.md) contains 41 direct simulator captures per device; the reviewed source and validation receipt match.
 
 During the review, UI-test launch arguments were also replaced with resettable test preferences: fixed command-line defaults had prevented tests from actually changing a feed or density preference. The release app never uses this test setup. Failure recordings also exposed tests tapping the label area of a switch and the underlying storage row instead of the confirmation. Tests now target the switch thumb, assert its value, and identify the confirmation explicitly.
 
