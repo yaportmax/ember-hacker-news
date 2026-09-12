@@ -5,6 +5,7 @@ struct FeedView: View {
     @AppStorage("selectedFeed") private var selectedFeed = Feed.top.rawValue
     @AppStorage("hideReadStories") private var hideRead = false
     @Environment(ReadingStore.self) private var reading
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     init(service: any HNService, cache: FeedCache) { _model = State(initialValue: FeedModel(service: service, cache: cache)) }
     private var feed: Feed { Feed(rawValue: selectedFeed) ?? .top }
@@ -50,8 +51,8 @@ struct FeedView: View {
                     }
                     Divider()
                     Toggle("Hide read stories", isOn: $hideRead)
-                } label: { HStack(spacing: 4) { Text("Feeds"); Image(systemName: "chevron.down").font(.caption.weight(.semibold)) }.font(.subheadline) }
-                .accessibilityLabel("Choose feed").accessibilityIdentifier("feed-menu")
+                } label: { HStack(spacing: 4) { Text(sizeClass == .regular ? feed.title : "Feeds"); Image(systemName: "chevron.down").font(.caption.weight(.semibold)) }.font(.subheadline) }
+                .accessibilityLabel("Choose feed, \(feed.title) selected").accessibilityIdentifier("feed-menu")
             }
         }
         .refreshable { await model.refresh() }

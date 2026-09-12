@@ -85,6 +85,7 @@ struct PageButton: View {
             }
             .font(.subheadline.weight(.medium))
             .frame(maxWidth: .infinity, minHeight: 44, alignment: alignment)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain).foregroundStyle(Color.accentColor)
         .disabled(loading)
@@ -149,7 +150,7 @@ struct StoryRow: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
-    private var separator: some View { Text("·").accessibilityHidden(true) }
+    private var separator: some View { MetadataSeparator() }
     private var timeAndBookmark: some View {
         HStack(spacing: 8) {
             RelativeTime(date: item.date).fixedSize()
@@ -157,6 +158,12 @@ struct StoryRow: View {
                 Image(systemName: "bookmark.fill").foregroundStyle(Color.accentColor).accessibilityLabel("Saved")
             }
         }
+    }
+}
+
+struct MetadataSeparator: View {
+    var body: some View {
+        Circle().fill(.primary).frame(width: 2, height: 2).accessibilityHidden(true)
     }
 }
 

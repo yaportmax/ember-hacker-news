@@ -31,6 +31,10 @@ struct DiscussionView: View {
                     RichText(option.text ?? "")
                 }.padding(.vertical, 5)
             }
+            if model.story.isVisible, model.story.articleURL == nil {
+                articleAction.listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+            }
             if model.story.type != "job" {
                 Text(model.story.commentCount == 1 ? "1 comment" : "\(model.story.commentCount.formatted()) comments")
                     .font(.subheadline.weight(.medium)).foregroundStyle(EmberStyle.secondaryText)
@@ -41,6 +45,11 @@ struct DiscussionView: View {
                 }
                 if (model.story.kids ?? []).isEmpty, !model.isLoading, model.error == nil {
                     EmptyState(title: "Quiet for now", symbol: "bubble.left.and.bubble.right", detail: "Be the first to join the discussion on Hacker News.")
+                        .listRowSeparator(.hidden)
+                }
+                if !(model.story.kids ?? []).isEmpty, !model.isLoading, model.error == nil,
+                   model.rows(blocked: reading.archive.blockedUsers).isEmpty {
+                    EmptyState(title: "Comments are hidden", symbol: "eye.slash", detail: "Review blocked users in Settings to show these comments.")
                         .listRowSeparator(.hidden)
                 }
                 ForEach(model.rows(blocked: reading.archive.blockedUsers)) { row in
@@ -74,6 +83,9 @@ struct DiscussionView: View {
                 .accessibilityLabel(reading.isSaved(model.story.id) ? "Remove bookmark" : "Save story")
                 .accessibilityIdentifier("bookmark-story")
                 Menu {
+                    if model.story.articleURL != nil, model.story.isVisible {
+                        Button(articleActionTitle, systemImage: "arrow.up.right", action: openArticle)
+                    }
                     ShareLink(item: model.story.discussionURL) { Label("Share discussion", systemImage: "square.and.arrow.up") }
                     if let url = model.story.articleURL { ShareLink(item: url) { Label("Share article", systemImage: "link") } }
                     Button(model.story.type == "job" ? "Open on Hacker News" : "Vote or reply on HN", systemImage: "arrow.up.right.square") { app.open(model.story.discussionURL) }
@@ -107,9 +119,10 @@ struct DiscussionView: View {
         VStack(alignment: .leading, spacing: 8) {
             if let domain = model.story.domain {
                 Text(domain).font(.subheadline).foregroundStyle(EmberStyle.secondaryText)
+                    .accessibilityLabel("Source: \(domain)")
             }
             if model.story.articleURL != nil, model.story.isVisible {
-                Button(action: openArticle) { storyTitle }
+                Button(action: openArticle) { storyTitle.frame(minHeight: 44, alignment: .leading).contentShape(Rectangle()) }
                     .buttonStyle(.plain)
                     .accessibilityHint("Opens article")
                     .accessibilityIdentifier("article-title")
@@ -119,20 +132,27 @@ struct DiscussionView: View {
             } else {
                 HStack(spacing: 12) { author; metadata; Spacer(minLength: 0) }
             }
-            if model.story.isVisible {
-                Button(action: openArticle) {
-                    HStack(spacing: 6) {
-                        Text(model.story.articleURL == nil ? "Join on Hacker News" : (model.story.type == "job" ? "View job" : "Read article"))
-                        Image(systemName: "arrow.up.right").font(.caption.weight(.semibold))
-                    }
-                    .font(.subheadline.weight(.medium))
-                    .frame(minHeight: 44, alignment: .leading)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain).foregroundStyle(Color.accentColor)
-                .accessibilityIdentifier("read-article")
-            }
+            if model.story.isVisible, model.story.articleURL != nil { articleAction }
+
         }.padding(.top, 8).padding(.bottom, 4)
+    }
+
+    private var articleActionTitle: String {
+        model.story.type == "job" ? "View job" : (model.story.articleURL == nil ? "Join on Hacker News" : "Read article")
+    }
+
+    private var articleAction: some View {
+        Button(action: openArticle) {
+            HStack(spacing: 6) {
+                Text(articleActionTitle)
+                Image(systemName: "arrow.up.right").font(.caption.weight(.semibold))
+            }
+            .font(.subheadline.weight(.medium))
+            .frame(minHeight: 44, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain).foregroundStyle(Color.accentColor)
+        .accessibilityLabel(articleActionTitle).accessibilityIdentifier("read-article")
     }
 
     private var storyTitle: some View {
@@ -146,6 +166,7 @@ struct DiscussionView: View {
         if let by = model.story.by {
             Button { selectedUsername = by } label: {
                 Text(by).font(.subheadline.weight(.medium)).frame(minWidth: 44, minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain).accessibilityLabel("Profile: \(by)")
             .accessibilityIdentifier("story-author")
@@ -155,7 +176,7 @@ struct DiscussionView: View {
         HStack(spacing: 8) {
             if model.story.type != "job" {
                 Text("\(max(0, model.story.score ?? 0).formatted()) points")
-                Text("·").accessibilityHidden(true)
+                MetadataSeparator()
             }
             RelativeTime(date: model.story.date)
         }.font(.caption).foregroundStyle(EmberStyle.secondaryText)
@@ -191,9 +212,10 @@ private struct CommentView: View {
                     Button(action: profile) {
                         Text(by).font(.subheadline.weight(.semibold)).foregroundStyle(isOP ? Color.accentColor : .primary)
                             .fixedSize(horizontal: false, vertical: true).frame(minWidth: 44, minHeight: 44, alignment: .leading)
+                            .contentShape(Rectangle())
                     }.buttonStyle(.plain).accessibilityLabel("Profile: \(by)")
                 } else { Text("[deleted]").font(.subheadline).foregroundStyle(EmberStyle.secondaryText) }
-                if isOP, item.isVisible { Text("OP").font(.caption2.weight(.semibold)).foregroundStyle(Color.accentColor) }
+                if isOP, item.isVisible { Text("OP").font(.caption2.weight(.semibold)).foregroundStyle(Color.accentColor).accessibilityLabel("Original poster") }
                 RelativeTime(date: item.date).font(.caption).foregroundStyle(EmberStyle.secondaryText)
                 Spacer(minLength: 4)
                 Button(action: toggle) {

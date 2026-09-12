@@ -103,6 +103,7 @@ private struct StorageView: View {
                 }
                 confirmation = nil
             }
+            .accessibilityIdentifier("confirm-clear-data")
         } message: {
             Text(confirmation == .recover ? "Ember will keep a copy of the unreadable file and start a new local collection." : "This removes the selected data from this device and can’t be undone.")
         }

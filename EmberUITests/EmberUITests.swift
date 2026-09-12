@@ -148,9 +148,11 @@ import XCTest
         collections.buttons["Reading preferences"].tap()
         XCTAssertTrue(collections.switches["Use Reader when available"].waitForExistence(timeout: 5))
         attach(collections, name: "Audit-19-Reading-Preferences")
-        collections.switches["Open in default browser"].tap()
-        XCTAssertFalse(collections.switches["Use Reader when available"].exists)
-        collections.switches["Open in default browser"].tap()
+        setSwitch(collections.switches["Open in default browser"], on: true)
+        let readerHidden = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: collections.switches["Use Reader when available"])
+        XCTAssertEqual(XCTWaiter.wait(for: [readerHidden], timeout: 5), .completed)
+        setSwitch(collections.switches["Open in default browser"], on: false)
+        XCTAssertTrue(collections.switches["Use Reader when available"].waitForExistence(timeout: 5))
         collections.navigationBars.buttons.element(boundBy: 0).tap()
         collections.buttons["Hidden content"].tap()
         attach(collections, name: "Audit-20-Hidden-Content")
@@ -209,6 +211,13 @@ import XCTest
             app.buttons["Done"].tap()
             XCTAssertTrue(app.buttons["bookmark-story"].waitForExistence(timeout: 5))
         }
+        app.swipeUp()
+        app.buttons["Discussion actions"].tap()
+        let menuArticle = app.buttons.matching(identifier: "Read article").allElementsBoundByIndex.last { $0.isHittable }
+        XCTAssertNotNil(menuArticle)
+        menuArticle?.tap()
+        XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 10))
+        app.buttons["Done"].tap()
     }
 
     func testJobsDoNotInviteComments() {
@@ -236,8 +245,7 @@ import XCTest
         let message = app.staticTexts["This removes the selected data from this device and can’t be undone."]
         XCTAssertTrue(message.waitForExistence(timeout: 5))
         attach(app, name: "Audit-26-Clear-History-Confirmation")
-        let choices = app.buttons.matching(identifier: "Clear reading history")
-        choices.element(boundBy: choices.count - 1).tap()
+        app.buttons["confirm-clear-data"].tap()
         selectTab("Saved", in: app)
         XCTAssertTrue(app.buttons["story-1001"].waitForExistence(timeout: 5))
         app.buttons["History"].tap()
@@ -273,7 +281,7 @@ import XCTest
         XCTAssertTrue(app.staticTexts["Over morning coffee"].waitForExistence(timeout: 5))
         attach(app, name: "Audit-29-Poll")
         selectTab("Settings", in: app)
-        app.switches["Compact stories"].tap()
+        setSwitch(app.switches["Compact stories"], on: true)
         selectTab("Stories", in: app)
         app.navigationBars.buttons.element(boundBy: 0).tap()
         attach(app, name: "Audit-30-Compact-Stories")
@@ -288,6 +296,18 @@ import XCTest
         attach(app, name: "Audit-17-Large-Text-Discussion")
         app.swipeUp()
         attach(app, name: "Audit-18-Large-Text-Comments")
+    }
+
+    private func setSwitch(_ element: XCUIElement, on: Bool) {
+        XCTAssertTrue(element.waitForExistence(timeout: 5))
+        let expected = on ? "1" : "0"
+        if element.value as? String != expected {
+            // SwiftUI exposes the whole form row as a switch. Target its thumb.
+            element.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 0.5))
+                .withOffset(CGVector(dx: -25, dy: 0)).tap()
+        }
+        let changed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", expected), object: element)
+        XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 5), .completed)
     }
 
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {

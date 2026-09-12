@@ -12,7 +12,7 @@ Captured from the running native app in GitHub-hosted iPhone and iPad simulators
 | --- | --- |
 | ![iPhone stories in light mode](docs/screenshots/iphone-01-stories-light.png) | ![iPhone stories in dark mode](docs/screenshots/iphone-04-stories-dark.png) |
 
-[All iPhone and iPad screenshots](docs/SCREENSHOTS.md)
+[All iPhone and iPad screenshots](docs/SCREENSHOTS.md) · [Design review](docs/review/AUDIT.md)
 
 ## Open and run
 
@@ -58,7 +58,7 @@ python3 scripts/release.py validate
 
 This runs unit and UI tests on iPhone, UI tests on iPad, a Release build for a physical iOS device without signing, and static project checks. Results are stored in `build/`. It writes a validation receipt only after all steps succeed. Optional `--iphone` and `--ipad` arguments select simulator UDIDs explicitly.
 
-UI tests use synthetic fixtures only when **Debug** is launched with `--ui-testing`. Normal Debug builds use the live APIs. Release builds do not contain the fixture implementation. The screenshot test attaches real simulator captures to the test results. GitHub Actions exports these as `ios-test-results` artifacts, retained for one day. UI-test screenshots use synthetic stories, not the live feed.
+UI tests use synthetic fixtures only when **Debug** is launched with `--ui-testing`. Normal Debug builds use the live APIs. Release builds do not contain the fixture implementation. The screenshot test attaches real simulator captures to the test results. GitHub Actions runs iPhone and iPad checks concurrently, exports `ios-iPhone-screenshots` and `ios-iPad-screenshots`, and writes `release-validation` only when every check passes. Artifacts are retained for one day; selected captures are committed to the gallery. UI-test screenshots use synthetic stories, not the live feed.
 
 ## Prepare a release
 

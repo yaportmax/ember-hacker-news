@@ -5,8 +5,8 @@ struct SavedView: View {
     @State private var showHistory = false
     @State private var query = ""
 
+    private var source: [SavedStory] { showHistory ? reading.history : reading.bookmarks }
     private var stories: [SavedStory] {
-        let source = showHistory ? reading.history : reading.bookmarks
         return source.filter {
             !reading.isHidden($0.item) && (query.isEmpty || $0.item.displayTitle.localizedCaseInsensitiveContains(query) || ($0.item.domain ?? "").localizedCaseInsensitiveContains(query))
         }
@@ -19,9 +19,9 @@ struct SavedView: View {
                 Text("History").tag(true)
             }.pickerStyle(.segmented).listRowSeparator(.hidden).padding(.vertical, 8)
             if stories.isEmpty {
-                EmptyState(title: query.isEmpty ? (showHistory ? "No reading history" : "No saved stories") : "No matches",
+                EmptyState(title: query.isEmpty ? (source.isEmpty ? (showHistory ? "No reading history" : "No saved stories") : "Stories are hidden") : "No matches",
                            symbol: showHistory ? "clock" : "bookmark",
-                           detail: query.isEmpty ? (showHistory ? "Stories you open will appear here." : "Tap a story’s bookmark to keep it here.") : "Try a different title or website.")
+                           detail: query.isEmpty ? (source.isEmpty ? (showHistory ? "Stories you open will appear here." : "Tap a story’s bookmark to keep it here.") : "Review Hidden content in Settings to show your stories.") : "Try a different title or website.")
                     .listRowSeparator(.hidden)
             }
             ForEach(stories) { saved in
