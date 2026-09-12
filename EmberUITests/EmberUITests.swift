@@ -113,6 +113,9 @@ import XCTest
         attach(dark, name: "04-Stories-Dark")
         defer { XCUIDevice.shared.orientation = .portrait }
         XCUIDevice.shared.orientation = .landscapeLeft
+        let landscape = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in dark.frame.width > dark.frame.height }, object: dark)
+        XCTAssertEqual(XCTWaiter.wait(for: [landscape], timeout: 5), .completed)
+        XCTAssertTrue(dark.buttons["story-1001"].isHittable)
         attach(dark, name: "Audit-33-Landscape-Stories")
     }
 
