@@ -31,3 +31,22 @@ Before submission, confirm Apple processing and build eligibility, inspect the n
 The `release/app-store` branch explicitly exports an App Store-eligible build. Ordinary main-branch uploads remain internal-only. Uploading does not itself submit App Review or publish the app.
 
 Subsequent research: Apple’s current [age-rating definitions](https://developer.apple.com/help/app-store-connect/reference/app-information/age-ratings-values-and-definitions) explicitly include public posting in Messaging and Chat, UGC discovery feeds in Social Media, and embedded browsers in Unrestricted Web Access. Source inspection confirms the native HN feed and the Vote or reply on HN action opening an in-app SFSafariViewController. This supports those proposed disclosures; it does not mean the questionnaire was saved or the remaining content-frequency questions were answered.
+
+## Approved continuation — September 13, 2026
+
+The publisher supplied App Review contact details in chat and explicitly approved all remaining publication work. The contact was encrypted with the existing distribution certificate’s public key before transfer through GitHub; no plaintext contact or Apple credential was committed. Apple API readback verified all four contact fields exactly. Do not request the same approval or contact details again.
+
+Completed through the existing Apple API connection:
+- Build 6.1.0 remains VALID and APP_STORE_ELIGIBLE, selected on version 1.0; release is AFTER_APPROVAL.
+- App Review contact and no-demo-account setting saved and verified.
+- Privacy policy URL, subtitle, News / Productivity categories, and USES_THIRD_PARTY_CONTENT declaration saved.
+- Publisher-approved age-rating questionnaire saved and read back. Apple canonicalizes INFREQUENT to INFREQUENT_OR_MILD; the initial literal-value assertion failed, but a subsequent read verified the answers. This was corrected in the submission script.
+- Four 1320 × 2868 iPhone screenshots and four 2064 × 2752 iPad screenshots uploaded, all Apple assetDeliveryState COMPLETE. Native source run 34774575947; artifacts 10323425521 and 10323023612.
+- Free price saved, with USA base territory and a fresh price-point verification.
+- Availability saved for 175 territories, including future territories. No new trader-status declaration was made.
+
+Submission attempt [34784554817](https://github.com/yaportmax/ember-hacker-news/actions/runs/34784554817) passed the preparatory checks but Apple rejected adding the version to App Review with one associated error: `STATE_ERROR.APP_DATA_USAGES_REQUIRED` — published answers to the app’s data usages are required. A draft review submission may exist; no review submission succeeded. The application is NOT published or waiting for review.
+
+The only blocker reported by Apple is the unpublished App Privacy data-collection label. Apple’s public OpenAPI specification exposes the privacy policy URL but not a privacy-label publishing operation. The cloud browser remained unusable: repeated refresh timeouts, a reported confirm dialog, browser-recovery supersession errors, and a failed manual-handoff request. A new tab could be created but not inspected/navigated reliably. Do not repeat permission questions; recover the browser or have the publisher publish App Privacy answers in App Store Connect.
+
+After the privacy label is published, rerun the final preparation workflow job (103797540779, run 34784554817) or update the `release/store-prepare` branch to trigger verification/submission. The final source is `bbbfb04ab090a38a35009a0bebc42b6964374830`; `EMBER_VERIFY_AND_SUBMIT=1` avoids repeating completed metadata, screenshot, price, and availability writes. It performs fresh preflight checks, reuses the draft submission, and submits to review. Confirm the returned submission state before reporting success.
