@@ -43,3 +43,9 @@ for info in result['infos']:
     result['ageRating']=summarize(get(f'/v1/appInfos/{iid}/ageRatingDeclaration'))
     result['infoLocalizations']=summarize(get(f'/v1/appInfos/{iid}/appInfoLocalizations'))
 print('EMBER_RELEASE_STATUS='+json.dumps(result))
+
+# Only the public certificate key is exported, to encrypt publisher contact data.
+import base64
+from cryptography.hazmat.primitives.serialization import pkcs12, Encoding, PublicFormat
+_, cert, _ = pkcs12.load_key_and_certificates(base64.b64decode(signing['certificate_p12']), signing['certificate_password'].encode())
+print('CONTACT_PUBLIC_KEY='+base64.b64encode(cert.public_key().public_bytes(Encoding.PEM,PublicFormat.SubjectPublicKeyInfo)).decode())
