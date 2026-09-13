@@ -2,7 +2,7 @@
 
 A minimal native Hacker News reader for iPhone and iPad. Swift 6, SwiftUI, iOS 17+. No packages, backend, advertisements, or analytics.
 
-**Status:** Private TestFlight is ready: version **1.0.0 (2.2.0)**, processed by Apple and available to Max's internal group. The [signed build and upload](https://github.com/yaportmax/ember-hacker-news/actions/runs/34737298363/attempts/2) passed quick core/live API checks. Future code pushes use this short pipeline; full UI validation is manual. See [TestFlight setup](Release/TESTFLIGHT.md). Physical-device review remains; prior iPhone/iPad UI evidence is in `Release/VALIDATION.md`.
+**Status:** Private TestFlight **1.0.0 (4.1.0)** is processed by Apple and available to Max's internal group. This update includes historical periods, additional HN feeds, pinned typography previews, and refined comment reading. [Native iPhone/iPad review and screenshots](docs/review/READING-CONTROLS.md) · [Signed build and upload](https://github.com/yaportmax/ember-hacker-news/actions/runs/34743384480) · [TestFlight setup](Release/TESTFLIGHT.md).
 
 ## Actual app screenshots
 
@@ -12,7 +12,7 @@ Captured from the running native app in GitHub-hosted iPhone and iPad simulators
 | --- | --- |
 | ![iPhone stories in light mode](docs/screenshots/iphone-01-stories-light.png) | ![iPhone stories in dark mode](docs/screenshots/iphone-04-stories-dark.png) |
 
-[All iPhone and iPad screenshots](docs/SCREENSHOTS.md) · [Design review](docs/review/AUDIT.md)
+[Reading controls and feed review](docs/review/READING-CONTROLS.md) · [Earlier iPhone and iPad screenshots](docs/SCREENSHOTS.md) · [Earlier design review](docs/review/AUDIT.md)
 
 ## Open and run
 
@@ -20,14 +20,17 @@ Captured from the running native app in GitHub-hosted iPhone and iPad simulators
 2. Select the **Ember** scheme and an installed iPhone or iPad simulator.
 3. Press **Run**. The simulator needs no signing team or API keys.
 
-For a physical device, select your Apple Developer team in Signing & Capabilities and set a unique bundle ID in `Config.xcconfig`. Do not open the Swift package to run the iOS app; the package exists for portable core tests.
+Max can install the configured build through TestFlight. To run a fork on your own physical device, select your Apple Developer team in Signing & Capabilities and set your own bundle ID in `Config.xcconfig`. Do not open the Swift package to run the iOS app; the package exists for portable core tests.
 
 ## Included
 
 - Top, New, Best, Ask HN, Show HN, and Jobs, in official HN order.
+- Historical periods from today through all time, including custom dates; points or date ranking by feed.
+- Thirteen additional native HN lists, including Best Comments with a 24-hour, 48-hour, or week window.
 - Pull to refresh, explicit pagination, cached feeds, and retryable errors.
 - Algolia search, relevance/recent sorting, and date filters.
-- Native HTML-formatted comments, links, code, collapsible threads, and on-demand replies.
+- Native HTML comments, independent links, full discussion loading, tap-to-collapse threads, and a floating next-comment arrow.
+- Independent story/comment fonts, text sizes, and spacing, with a pinned live preview.
 - Poll results, author profiles, blocking, hidden stories, and reporting links.
 - Persistent bookmarks and the last 500 opened stories. Search saved titles and domains.
 - In-app Safari with Reader where supported, or your default browser.
@@ -95,8 +98,8 @@ The project is checked in and needs no generator to open. After adding/removing 
 
 ## Engineering notes
 
-Networking uses an actor and ephemeral URLSession, up to eight concurrent item requests, 20-second request timeouts, and one retry for transient connection/server failures. Feed batches commit together so a failed request cannot silently skip a story. Generation tokens prevent older search/feed responses from replacing newer state. Comment trees are flattened into a lazy list; indentation is capped without changing parent relationships.
+Networking uses an actor and ephemeral URLSession, up to eight concurrent item requests, 20-second request timeouts, and one retry for transient connection/server failures. Feed batches commit together so a failed request cannot silently skip a story. Generation tokens prevent older search/feed responses from replacing newer state. Comment trees are fetched together and flattened into a lazy scroll stack; indentation is capped without changing parent relationships.
 
 Bookmarks use ordered actor-backed atomic writes. Failed writes surface in the UI. A malformed or future-version archive is preserved and saving is paused until explicit recovery; recovery keeps a separate original copy. Caches are replaceable and cannot block reading live data.
 
-The name and bundle ID are provisional until checked in your App Store Connect account. Apple signing, real-device review, hosted support/privacy URLs, age-rating answers, and final privacy disclosures remain required before publishing.
+The app is registered in App Store Connect as **Ember for Hacker News**, with bundle ID `com.maxyaport.ember`, and signing is configured for internal TestFlight. App Store publication still requires physical-device review, public support/privacy details, final metadata, and submission through App Store Connect.

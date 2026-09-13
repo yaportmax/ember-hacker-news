@@ -80,6 +80,8 @@ The following reading captures are from the final run on `738a25024f1a6f5b859b64
 
 ## Sources and boundaries
 
+The reviewed source was signed and uploaded as **1.0.0 (4.1.0)** in [run 34743384480](https://github.com/yaportmax/ember-hacker-news/actions/runs/34743384480). All 36 core/live API checks passed on that source before the signed Release archive and upload. [Upload record](../../Release/testflight-4.1.0-upload.json). Current tester availability is recorded separately in [TestFlight status](../../Release/TESTFLIGHT.md).
+
 [HN's list directory](https://news.ycombinator.com/lists) documents the extra feeds. [Best Comments](https://news.ycombinator.com/bestcomments) documents its default 48-hour window and `h` parameter. [HN Search](https://github.com/algolia/hn-search) supplies the historical search index. HN-only lists have no Firebase listing endpoint, so Ember reads their public listing IDs and obtains the content from Firebase. Changes to HN's markup may require parser maintenance; an error offers retry and the original HN page.
 
 This review covers these reading and feed changes. Simulator captures do not establish complete physical-device or VoiceOver coverage. App Store publication is separate from the private TestFlight build.

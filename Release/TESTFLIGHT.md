@@ -1,6 +1,8 @@
 # Internal TestFlight
 
-Version **1.0.0 (2.2.0)** is available for private testing as of September 13, 2026. Apple processing is `VALID`, internal status is `IN_BETA_TESTING`, and the group has one invitation. Accept the TestFlight invitation and install **Ember for Hacker News**. The successful build/sign/upload job took about two minutes. [GitHub run](https://github.com/yaportmax/ember-hacker-news/actions/runs/34737298363/attempts/2).
+Version **1.0.0 (4.1.0)** is available for private testing as of September 13, 2026. App Store Connect shows upload status **Complete** and build status **Testing** in **Max — Internal Testing**, with one invitation. Open TestFlight and update **Ember for Hacker News**. [GitHub build/sign/upload run](https://github.com/yaportmax/ember-hacker-news/actions/runs/34743384480).
+
+The app source is `738a25024f1a6f5b859b64305946aae09f2239a8`; Apple's build ID is `63a89c6c-97b6-42bb-8c25-08c87f943ec8`. This update adds historical periods and custom dates, thirteen extra HN lists, a pinned typography preview, full discussion loading, compact collapse behavior, and a next-comment jump. [Native review and screenshots](../docs/review/READING-CONTROLS.md) · [Upload record](testflight-4.1.0-upload.json).
 
 Ember is registered as `com.maxyaport.ember` in team `4BY949S88S`, with App Store Connect app ID `6811495244`. The private internal group contains only Max's account and automatically receives uploaded builds.
 

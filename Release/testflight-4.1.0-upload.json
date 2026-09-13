@@ -1,0 +1,17 @@
+{
+  "uploaded_at": "2026-09-13T06:44:28.680953+00:00",
+  "source_commit": "738a25024f1a6f5b859b64305946aae09f2239a8",
+  "source_sha256": "3623ae3b1bcd56728b35ff02929b8290b500e4c13029f527f774ea3d1be94a52",
+  "workflow_run": "34743384480",
+  "checks": [
+    "static project checks",
+    "core and live API tests",
+    "signed Release archive"
+  ],
+  "ui_tests_run": false,
+  "bundle_id": "com.maxyaport.ember",
+  "version": "1.0.0",
+  "build": "4.1.0",
+  "internal_only": true,
+  "status": "uploaded; Apple processing and tester availability must be verified separately"
+}
