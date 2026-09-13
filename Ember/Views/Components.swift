@@ -52,10 +52,18 @@ struct StoryTypography: ViewModifier {
     }
 }
 
+struct CommentSpacing: ViewModifier {
+    var collapsed = false
+    @AppStorage("commentRowSpacing") private var spacing = 14.0
+    func body(content: Content) -> some View {
+        content.padding(.top, spacing).padding(.bottom, collapsed ? 0 : spacing)
+    }
+}
+
 struct RichText: View {
     private let html: String
     private let preparedRuns: [HNHTML.Run]?
-    @AppStorage("commentTextSize") private var size = 17.0
+    @AppStorage("commentTextSize") private var size = 14.0
     @AppStorage("commentFont") private var font = ReadingFont.system
     @AppStorage("commentLineSpacing") private var spacing = 5.0
     @ScaledMetric(relativeTo: .body) private var scale = 1.0
@@ -162,7 +170,7 @@ struct StoryRow: View {
                 else { openDiscussion() }
             } label: {
                 VStack(alignment: .leading, spacing: compact ? 5 : 7) {
-                    Text(item.displayTitle).modifier(StoryTypography())
+                    Text(item.displayTitle).modifier(StoryTypography()).accessibilityIdentifier("story-title-\(item.id)")
                         .foregroundStyle(dimRead && reading.isRead(item.id) ? EmberStyle.secondaryText : .primary)
                         .fixedSize(horizontal: false, vertical: true)
                     if !compact, let domain = item.domain {

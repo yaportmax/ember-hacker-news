@@ -30,8 +30,8 @@ final class AppContainer {
                                      "externalBrowser": false, "readerMode": true,
                                      "storyTextSize": 17.0, "storyFont": "system", "storyLineSpacing": 2.0,
                                      "storyRowSpacing": 12.0, "boldStoryTitles": true,
-                                     "commentTextSize": 17.0, "commentFont": "system", "commentLineSpacing": 5.0,
-                                     "commentRowSpacing": 7.0, "replyIndent": 12.0] as [String: Any] {
+                                     "commentTextSize": 14.0, "commentFont": "system", "commentLineSpacing": 5.0,
+                                     "commentRowSpacing": 14.0, "replyIndent": 14.0] as [String: Any] {
                     defaults.set(value, forKey: key)
                 }
             }
@@ -44,6 +44,13 @@ final class AppContainer {
             return
         }
         #endif
+        let defaults = UserDefaults.standard
+        if !defaults.bool(forKey: "commentDefaults14") {
+            for (key, old) in ["commentTextSize": 17.0, "commentRowSpacing": 7.0, "replyIndent": 12.0] {
+                if defaults.object(forKey: key) == nil || defaults.double(forKey: key) == old { defaults.set(14.0, forKey: key) }
+            }
+            defaults.set(true, forKey: "commentDefaults14")
+        }
         service = HNClient()
         reading = ReadingStore(directory: support)
         cache = FeedCache(directory: cachePath)

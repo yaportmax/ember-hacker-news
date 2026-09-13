@@ -9,9 +9,70 @@ import re
 import secrets
 import subprocess
 import tempfile
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from datetime import datetime, timezone
 
 import release
+
+
+def apple_availability(signing, key_path, build_number):
+    """Read only: verify processing, beta state, and the existing internal group."""
+    def encoded(value):
+        return base64.urlsafe_b64encode(value).rstrip(b'=').decode()
+    now = int(time.time())
+    header = encoded(json.dumps({'alg': 'ES256', 'kid': signing['key_id'], 'typ': 'JWT'}).encode())
+    payload = encoded(json.dumps({'iss': signing['issuer_id'], 'iat': now, 'exp': now + 600, 'aud': 'appstoreconnect-v1'}).encode())
+    message = header + '.' + payload
+    signature = subprocess.run(['openssl', 'dgst', '-sha256', '-sign', str(key_path)],
+                               input=message.encode(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True).stdout
+    # OpenSSL emits ASN.1 DER; ES256 JWT signatures concatenate fixed-width r/s.
+    if signature[0] != 0x30 or signature[1] != len(signature) - 2:
+        raise RuntimeError('Invalid Apple token signature.')
+    offset, parts = 2, []
+    for _ in range(2):
+        if signature[offset] != 0x02:
+            raise RuntimeError('Invalid Apple token signature.')
+        length = signature[offset + 1]
+        value = signature[offset + 2:offset + 2 + length].lstrip(b'\x00')
+        if len(value) > 32:
+            raise RuntimeError('Invalid Apple token signature.')
+        parts.append(value.rjust(32, b'\x00')); offset += 2 + length
+    token = message + '.' + encoded(b''.join(parts))
+    query = urllib.parse.urlencode({'filter[app]': '6811495244', 'filter[version]': build_number,
+                                   'include': 'buildBetaDetail,betaGroups', 'limit': '5'})
+    request = urllib.request.Request('https://api.appstoreconnect.apple.com/v1/builds?' + query,
+                                     headers={'Authorization': 'Bearer ' + token, 'Accept': 'application/json'})
+    deadline = time.monotonic() + 480
+    last = {'status': 'uploaded; waiting for Apple processing'}
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                data = json.load(response)
+            for build in data.get('data', []):
+                attributes = build['attributes']
+                if attributes.get('version') != build_number:
+                    continue
+                detail = next((v for v in data.get('included', []) if v['type'] == 'buildBetaDetails'
+                               and v['id'] == (build.get('relationships', {}).get('buildBetaDetail', {}).get('data') or {}).get('id')), {})
+                groups = [v['id'] for v in (build.get('relationships', {}).get('betaGroups', {}).get('data') or [])]
+                state = detail.get('attributes', {}).get('internalBuildState')
+                last = {'apple_build_id': build['id'], 'processing_state': attributes.get('processingState'),
+                        'internal_build_state': state, 'beta_groups': groups, 'status': 'uploaded; Apple processing remains'}
+                if attributes.get('processingState') == 'VALID' and state == 'IN_BETA_TESTING' and 'aed222f8-bdd7-4b26-9a8a-7618e3a65278' in groups:
+                    return {**last, 'status': 'available to internal testers', 'verified_at': datetime.now(timezone.utc).isoformat()}
+                if attributes.get('processingState') in ['FAILED', 'INVALID']:
+                    return {**last, 'status': 'Apple processing failed'}
+        except urllib.error.HTTPError as error:
+            if error.code not in [429, 500, 502, 503, 504]:
+                return {'status': 'uploaded; availability check failed', 'availability_http_status': error.code}
+        except (urllib.error.URLError, TimeoutError):
+            pass
+        print('Waiting for Apple to make this build available to the internal group.', flush=True)
+        time.sleep(30)
+    return last
 
 
 def main():
@@ -103,7 +164,10 @@ def main():
                 raise RuntimeError('Validated source changed during packaging.')
             result = {'uploaded_at':datetime.now(timezone.utc).isoformat(),'source_commit':os.environ['EMBER_SOURCE_SHA'],'source_sha256':fingerprint,'workflow_run':os.environ['EMBER_VALIDATION_RUN'],'checks':['static project checks','core and live API tests','signed Release archive'],'ui_tests_run':False,'bundle_id':bundle,'version':info['CFBundleShortVersionString'],'build':build_number,'internal_only':True,'status':'uploaded; Apple processing and tester availability must be verified separately'}
             (release.BUILD/'testflight-upload.json').write_text(json.dumps(result,indent=2)+'\n')
-            print('Signed internal-only build uploaded to Apple; processing remains.',flush=True)
+            print('Signed internal-only build uploaded to Apple; checking tester availability.',flush=True)
+            result.update(apple_availability(signing, api_path, build_number))
+            (release.BUILD/'testflight-upload.json').write_text(json.dumps(result,indent=2)+'\n')
+            print(result['status'], flush=True)
         finally:
             subprocess.run(['security','list-keychains','-d','user','-s',*original_keychains],check=False,stdout=subprocess.DEVNULL)
             if keychain.exists():

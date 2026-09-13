@@ -416,10 +416,185 @@ import XCTest
             for _ in 0..<3 { if reset.isHittable { break }; controls.swipeUp() }
             reset.tap()
             for _ in 0..<3 { if size.isHittable { break }; controls.swipeDown() }
-            XCTAssertEqual(size.value as? String, "17 points")
+            XCTAssertEqual(size.value as? String, "14 points")
             attach(app, name: "Review-05-Reset-\(theme)")
             app.terminate()
         }
+    }
+
+    func testCommentSpacingAffectsPreviewAndReading() {
+        let app = launch(["--settings-review", "dark"])
+        selectTab("Settings", in: app)
+        app.buttons["Text & spacing"].tap()
+        app.segmentedControls.buttons["Comments"].tap()
+        let controls = app.collectionViews["typography-controls"]
+        func adjust(_ name: String, _ position: CGFloat) {
+            let slider = app.sliders["adjust-" + name]
+            for _ in 0..<5 { if slider.isHittable { break }; controls.swipeUp() }
+            for _ in 0..<5 { if slider.isHittable { break }; controls.swipeDown() }
+            XCTAssertTrue(slider.isHittable)
+            slider.adjust(toNormalizedSliderPosition: position)
+        }
+        let preview = app.staticTexts["comment-text-1"]
+        XCTAssertEqual(app.sliders["adjust-Text size"].value as? String, "14 points")
+        attach(app, name: "Spacing-00-Comment-Defaults")
+        adjust("Row spacing", 0.5); adjust("Reply indentation", 0.5); adjust("Text size", 0.5)
+        XCTAssertEqual(app.sliders["adjust-Text size"].value as? String, "14 points")
+        adjust("Text size", 0); adjust("Line spacing", 0); adjust("Row spacing", 0)
+        let compactHeight = preview.frame.height
+        adjust("Line spacing", 1)
+        XCTAssertGreaterThan(preview.frame.height, compactHeight + 12, "Line spacing must visibly change the preview even at the smallest font.")
+        XCTAssertTrue(app.staticTexts["typography-preview"].isHittable)
+        attach(app, name: "Spacing-01-Comment-Lines-Max")
+        adjust("Line spacing", 0)
+        let smallGap = app.buttons["Profile: riley"].frame.minY - preview.frame.maxY
+        adjust("Row spacing", 1)
+        XCTAssertGreaterThan(app.buttons["Profile: riley"].frame.minY - preview.frame.maxY, smallGap + 30)
+        attach(app, name: "Spacing-02-Comment-Rows-Max")
+        adjust("Row spacing", 0); adjust("Reply indentation", 0)
+        let reply = app.staticTexts["comment-text-2"]
+        XCTAssertEqual(reply.frame.minX, preview.frame.minX, accuracy: 1)
+        adjust("Reply indentation", 1)
+        XCTAssertGreaterThan(reply.frame.minX, preview.frame.minX + 25)
+        for name in ["Serif", "Rounded", "Monospaced", "System"] {
+            let font = app.buttons["reading-font"]
+            for _ in 0..<5 { if font.isHittable { break }; controls.swipeDown() }
+            font.tap(); app.buttons[name].tap()
+            XCTAssertTrue(preview.exists)
+            if name == "Monospaced" { attach(app, name: "Spacing-03-Comment-Font") }
+        }
+        adjust("Text size", 1)
+        XCTAssertGreaterThan(preview.frame.height, compactHeight + 20)
+        attach(app, name: "Spacing-04-Comment-Size-Max")
+        let reset = app.buttons["reset-typography"]
+        for _ in 0..<5 { if reset.isHittable { break }; controls.swipeUp() }
+        reset.tap()
+        adjust("Line spacing", 0)
+        selectTab("Stories", in: app)
+        app.buttons["story-1001"].tap()
+        let body = app.staticTexts["comment-text-2001"]
+        XCTAssertTrue(body.waitForExistence(timeout: 5))
+        let low = body.frame.height
+        attach(app, name: "Spacing-05-Discussion-Lines-Min")
+        selectTab("Settings", in: app)
+        adjust("Line spacing", 1)
+        selectTab("Stories", in: app)
+        XCTAssertGreaterThan(body.frame.height, low + 20, "The same setting must change already-open discussion text.")
+        attach(app, name: "Spacing-06-Discussion-Lines-Max")
+        selectTab("Settings", in: app)
+        adjust("Line spacing", 0)
+        selectTab("Stories", in: app)
+        XCTAssertEqual(body.frame.height, low, accuracy: 1)
+        app.terminate()
+    }
+
+    func testStorySpacingAndPreferencePersistence() {
+        let app = launch(["--settings-review"])
+        selectTab("Settings", in: app)
+        app.buttons["Text & spacing"].tap()
+        let controls = app.collectionViews["typography-controls"]
+        func adjust(_ name: String, _ position: CGFloat) {
+            let slider = app.sliders["adjust-" + name]
+            for _ in 0..<5 { if slider.isHittable { break }; controls.swipeUp() }
+            for _ in 0..<5 { if slider.isHittable { break }; controls.swipeDown() }
+            XCTAssertTrue(slider.isHittable)
+            slider.adjust(toNormalizedSliderPosition: position)
+        }
+        let preview = app.staticTexts["story-title--1"]
+        adjust("Line spacing", 0)
+        let low = preview.frame.height
+        adjust("Line spacing", 1)
+        XCTAssertGreaterThan(preview.frame.height, low + 10)
+        attach(app, name: "Spacing-07-Story-Lines-Max")
+        adjust("Row spacing", 0)
+        let lowGap = app.buttons["article--2"].frame.minY - app.buttons["story--1"].frame.maxY
+        adjust("Row spacing", 1)
+        XCTAssertGreaterThan(app.buttons["article--2"].frame.minY - app.buttons["story--1"].frame.maxY, lowGap + 35)
+        attach(app, name: "Spacing-08-Story-Rows-Max")
+        adjust("Row spacing", 0); adjust("Text size", 0)
+        let small = preview.frame.height
+        adjust("Text size", 1)
+        XCTAssertGreaterThan(preview.frame.height, small + 20)
+        let bold = app.switches["Bold titles"]
+        for _ in 0..<4 { if bold.isHittable { break }; controls.swipeUp() }
+        setSwitch(bold, on: false)
+        attach(app, name: "Spacing-09-Story-Size-Max")
+        setSwitch(bold, on: true)
+        let reset = app.buttons["reset-typography"]
+        for _ in 0..<5 { if reset.isHittable { break }; controls.swipeUp() }
+        reset.tap()
+        adjust("Line spacing", 0)
+        selectTab("Stories", in: app)
+        let actual = app.staticTexts["story-title-1001"]
+        XCTAssertTrue(actual.waitForExistence(timeout: 5))
+        let actualLow = actual.frame.height
+        selectTab("Settings", in: app); adjust("Line spacing", 1)
+        selectTab("Stories", in: app)
+        XCTAssertGreaterThan(actual.frame.height, actualLow + 10)
+        attach(app, name: "Spacing-10-Home-Lines-Max")
+        selectTab("Settings", in: app)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        setSwitch(app.switches["Compact stories"], on: true)
+        selectTab("Stories", in: app)
+        XCTAssertFalse(app.staticTexts["example.com"].firstMatch.exists)
+        attach(app, name: "Spacing-11-Compact-Home")
+        app.terminate()
+        let restored = launch(["--settings-review", "--preserve-state"])
+        selectTab("Settings", in: restored)
+        XCTAssertEqual(restored.switches["Compact stories"].value as? String, "1")
+        restored.buttons["Text & spacing"].tap()
+        let line = restored.sliders["adjust-Line spacing"]
+        let restoredControls = restored.collectionViews["typography-controls"]
+        for _ in 0..<5 { if line.isHittable { break }; restoredControls.swipeUp() }
+        XCTAssertEqual(line.value as? String, "14 points")
+        restored.terminate()
+    }
+
+    func testReadingPreferenceControls() {
+        let app = launch(["dark"])
+        XCTAssertTrue(app.buttons["story-1001"].waitForExistence(timeout: 10))
+        app.buttons["story-1001"].tap()
+        XCTAssertTrue(app.buttons["collapse-2001"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        selectTab("Settings", in: app)
+        for theme in ["Light", "Dark", "System"] {
+            app.buttons["appearance-picker"].tap()
+            app.buttons[theme].tap()
+            attach(app, name: "Settings-Theme-" + theme)
+        }
+        app.buttons["Reading preferences"].tap()
+        setSwitch(app.switches["Dim read stories"], on: false)
+        selectTab("Stories", in: app)
+        attach(app, name: "Settings-Read-Undimmed")
+        selectTab("Settings", in: app)
+        setSwitch(app.switches["Dim read stories"], on: true)
+        selectTab("Stories", in: app)
+        attach(app, name: "Settings-Read-Dimmed")
+        selectTab("Settings", in: app)
+        setSwitch(app.switches["Hide read stories"], on: true)
+        selectTab("Stories", in: app)
+        XCTAssertFalse(app.buttons["story-1001"].exists)
+        selectTab("Settings", in: app)
+        setSwitch(app.switches["Hide read stories"], on: false)
+        setSwitch(app.switches["Use Reader when available"], on: false)
+        setSwitch(app.switches["Open in default browser"], on: true)
+        XCTAssertFalse(app.switches["Use Reader when available"].exists)
+        attach(app, name: "Settings-External-Browser")
+        setSwitch(app.switches["Open in default browser"], on: false)
+        XCTAssertEqual(app.switches["Use Reader when available"].value as? String, "0")
+        setSwitch(app.switches["Use Reader when available"], on: true)
+        attach(app, name: "Settings-Reader")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["Hidden content"].tap()
+        app.buttons["Blocked users (0)"].tap()
+        XCTAssertTrue(app.staticTexts["No blocked users"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["Storage"].tap()
+        app.buttons["Clear offline feed cache"].tap()
+        XCTAssertTrue(app.staticTexts["Offline feed cache cleared."].waitForExistence(timeout: 5))
+        attach(app, name: "Settings-Storage")
+        app.terminate()
     }
 
     func testLargeDiscussionResponsiveness() {

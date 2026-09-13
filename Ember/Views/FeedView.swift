@@ -236,5 +236,7 @@ private struct ListedComment: View {
                     .buttonStyle(.plain).foregroundStyle(Color.accentColor).accessibilityIdentifier("thread-\(item.id)")
             }
         }
+        .modifier(CommentSpacing(collapsed: collapsed))
+        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
     }
 }

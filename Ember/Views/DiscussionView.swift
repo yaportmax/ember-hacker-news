@@ -1,8 +1,7 @@
 import SwiftUI
 
 struct DiscussionView: View {
-    @AppStorage("commentRowSpacing") private var rowSpacing = 7.0
-    @AppStorage("replyIndent") private var replyIndent = 12.0
+    @AppStorage("replyIndent") private var replyIndent = 14.0
     @State private var model: DiscussionModel
     @State private var userToBlock: String?
     @State private var reportItem: HNItem?
@@ -56,8 +55,7 @@ struct DiscussionView: View {
                                         isOP: comment.by == model.story.by,
                                         profile: { selectedUsername = comment.by },
                                         toggle: { model.toggle(comment.id) }, block: { userToBlock = comment.by }, report: { reportItem = comment })
-                                .padding(.top, rowSpacing)
-                                .padding(.bottom, model.collapsed.contains(comment.id) ? 0 : rowSpacing)
+                                .modifier(CommentSpacing(collapsed: model.collapsed.contains(comment.id)))
                             Divider()
                         }
                         .padding(.leading, indent(row.depth))
@@ -71,7 +69,7 @@ struct DiscussionView: View {
                     }
                 }
                 if let error = model.error {
-                    InlineNotice(message: error) { Task { await reload(refresh: true) } }
+                    InlineNotice(message: error) { Task { await reload(refresh: false) } }
                 }
             }.padding(.horizontal, 20).padding(.bottom, 72)
         }
@@ -236,6 +234,7 @@ struct DiscussionView: View {
 }
 
 struct CommentView: View {
+    @AppStorage("replyIndent") private var replyIndent = 14.0
     let item: HNItem
     var runs: [HNHTML.Run]? = nil
     let depth: Int
@@ -274,9 +273,8 @@ struct CommentView: View {
         .contentShape(Rectangle())
         .onTapGesture(perform: toggle)
         .accessibilityAction(named: collapsed ? "Expand thread" : "Collapse thread", toggle)
-        .padding(.leading, depth > 0 ? 10 : 0)
         .overlay(alignment: .leading) {
-            if depth > 0 { Rectangle().fill(Color.accentColor.opacity(0.25)).frame(width: 1).padding(.vertical, 10).accessibilityHidden(true) }
+            if depth > 0, replyIndent > 0 { Rectangle().fill(Color.accentColor.opacity(0.25)).frame(width: 1).padding(.vertical, 10).offset(x: -min(6, replyIndent / 2)).accessibilityHidden(true) }
         }
         .contextMenu {
             Button(collapsed ? "Expand thread" : "Collapse thread", systemImage: collapsed ? "plus" : "minus", action: toggle)

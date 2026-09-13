@@ -30,6 +30,11 @@ struct FixtureService: HNService {
     }
     func item(_ id: Int, fresh: Bool) async throws -> HNItem? {
         if ProcessInfo.processInfo.arguments.contains("--offline") { throw URLError(.notConnectedToInternet) }
+        if id == 1001, ProcessInfo.processInfo.arguments.contains("--settings-review") {
+            var story = Self.stories[0]
+            story.title = "A quieter place to read the stories and ideas<br>that make the web worth exploring"
+            return story
+        }
         if id == 9501 { return HNItem(id: 9501, type: "story", by: "julia", title: "A discussion with 1,200 comments", url: "https://example.com", descendants: 1200, kids: Array(10000...10119)) }
         if (10000...10119).contains(id) || (20000...21079).contains(id) {
             try await Task.sleep(for: .milliseconds(25))

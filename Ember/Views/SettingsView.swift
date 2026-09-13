@@ -8,7 +8,7 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section("Appearance") {
-                Picker("Theme", selection: $appearance) { Text("System").tag("system"); Text("Light").tag("light"); Text("Dark").tag("dark") }
+                Picker("Theme", selection: $appearance) { Text("System").tag("system"); Text("Light").tag("light"); Text("Dark").tag("dark") }.accessibilityIdentifier("appearance-picker")
                 Toggle("Compact stories", isOn: $compact)
                 NavigationLink("Text & spacing") { TypographySettingsView() }
             }
@@ -39,11 +39,11 @@ private struct TypographySettingsView: View {
     @AppStorage("storyRowSpacing") private var storyRows = 12.0
     @AppStorage("boldStoryTitles") private var bold = true
     @AppStorage("compactRows") private var compact = false
-    @AppStorage("commentTextSize") private var commentSize = 17.0
+    @AppStorage("commentTextSize") private var commentSize = 14.0
     @AppStorage("commentFont") private var commentFont = ReadingFont.system
     @AppStorage("commentLineSpacing") private var commentLines = 5.0
-    @AppStorage("commentRowSpacing") private var commentRows = 7.0
-    @AppStorage("replyIndent") private var replyIndent = 12.0
+    @AppStorage("commentRowSpacing") private var commentRows = 14.0
+    @AppStorage("replyIndent") private var replyIndent = 14.0
 
     @State private var editingComments = false
 
@@ -78,12 +78,12 @@ private struct TypographySettingsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     if editingComments {
-                        previewComment(id: 1, author: "alex", text: "<b>Good typography</b> gives ideas room to breathe.", depth: 0)
+                        previewComment(id: 1, author: "alex", text: "<b>Good typography</b> gives ideas room.<br>Each line should be easy to follow.", depth: 0)
                         Divider()
                         previewComment(id: 2, author: "riley", text: "Replies are easy to follow.", depth: 1)
                             .padding(.leading, replyIndent)
                     } else {
-                        StoryRow(item: HNItem(id: -1, type: "story", title: "The best part of the web is the people who make it", url: "https://example.com", score: 128, descendants: 42), openDiscussion: {}).allowsHitTesting(false)
+                        StoryRow(item: HNItem(id: -1, type: "story", title: "The best part of the web<br>is the people who make it", url: "https://example.com", score: 128, descendants: 42), openDiscussion: {}).allowsHitTesting(false)
                         Divider()
                         StoryRow(item: HNItem(id: -2, type: "story", title: "Small things, made with care", url: "https://example.com", score: 64, descendants: 12), openDiscussion: {}).allowsHitTesting(false)
                     }
@@ -96,7 +96,7 @@ private struct TypographySettingsView: View {
     private func previewComment(id: Int, author: String, text: String, depth: Int) -> some View {
         CommentView(item: HNItem(id: id, type: "comment", by: author, time: Date().timeIntervalSince1970 - 3600, text: text),
                     depth: depth, collapsed: false, isOP: false, profile: {}, toggle: {}, block: {}, report: {})
-            .padding(.vertical, commentRows).allowsHitTesting(false)
+            .modifier(CommentSpacing()).allowsHitTesting(false)
     }
 
     private var controls: some View {
@@ -104,10 +104,10 @@ private struct TypographySettingsView: View {
             if editingComments {
                 Section {
                     fontPicker("Font", selection: $commentFont)
-                    adjustment("Text size", value: $commentSize, range: 13...28)
+                    adjustment("Text size", value: $commentSize, range: 10...28, midpoint: 14)
                     adjustment("Line spacing", value: $commentLines, range: 0...16)
-                    adjustment("Row spacing", value: $commentRows, range: 0...24)
-                    adjustment("Reply indentation", value: $replyIndent, range: 0...20)
+                    adjustment("Row spacing", value: $commentRows, range: 0...28)
+                    adjustment("Reply indentation", value: $replyIndent, range: 0...28)
                 }
             } else {
                 Section {
@@ -122,7 +122,7 @@ private struct TypographySettingsView: View {
             Section {
                 Button(editingComments ? "Reset comment appearance" : "Reset story appearance") {
                     if editingComments {
-                        commentSize = 17; commentFont = .system; commentLines = 5; commentRows = 7; replyIndent = 12
+                        commentSize = 14; commentFont = .system; commentLines = 5; commentRows = 14; replyIndent = 14
                     } else {
                         storySize = 17; storyFont = .system; storyLines = 2; storyRows = 12; bold = true; compact = false
                     }
@@ -141,12 +141,32 @@ private struct TypographySettingsView: View {
         }.accessibilityIdentifier("reading-font")
     }
 
-    private func adjustment(_ title: String, value: Binding<Double>, range: ClosedRange<Double>) -> some View {
+    private func adjustment(_ title: String, value: Binding<Double>, range: ClosedRange<Double>, midpoint: Double? = nil) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack { Text(title); Spacer(); Text("\(Int(value.wrappedValue)) pt").foregroundStyle(EmberStyle.secondaryText).monospacedDigit() }
-            Slider(value: value, in: range, step: 1).accessibilityLabel(title)
-                .accessibilityValue("\(Int(value.wrappedValue)) points")
-                .accessibilityIdentifier("adjust-\(title)")
+            Group {
+                if let midpoint {
+                    // Keep the preferred size at the center without removing the larger sizes.
+                    Slider(value: Binding(get: {
+                        let current = value.wrappedValue
+                        return current <= midpoint ? (current - range.lowerBound) / (midpoint - range.lowerBound) * 0.5
+                            : 0.5 + (current - midpoint) / (range.upperBound - midpoint) * 0.5
+                    }, set: { position in
+                        value.wrappedValue = (position <= 0.5 ? range.lowerBound + position * 2 * (midpoint - range.lowerBound)
+                            : midpoint + (position - 0.5) * 2 * (range.upperBound - midpoint)).rounded()
+                    }), in: 0...1)
+                } else { Slider(value: value, in: range, step: 1) }
+            }
+            .accessibilityLabel(title)
+            .accessibilityValue("\(Int(value.wrappedValue)) points")
+            .accessibilityIdentifier("adjust-\(title)")
+            .accessibilityAdjustableAction { direction in
+                switch direction {
+                case .increment: value.wrappedValue = min(range.upperBound, value.wrappedValue + 1)
+                case .decrement: value.wrappedValue = max(range.lowerBound, value.wrappedValue - 1)
+                @unknown default: break
+                }
+            }
         }
     }
 }
@@ -271,7 +291,7 @@ struct SupportView: View {
         List {
             Section("Reading") { Text("Tap a story title to open the article. Tap the comment count beneath it to open the discussion. Swipe right on a story to read it directly.") }
             Section("Saving") { Text("Swipe left on a story, or tap the bookmark in a discussion. Saved stories appear in the Saved tab. Bookmarks preserve the story details and any loaded post text; external articles are not downloaded for offline use.") }
-            Section("Comments") { Text("Tap a comment to collapse or expand its thread. Use the floating down arrow on long comments to jump to the next comment or reply. The full discussion loads when you open it, in Hacker News order. Long-press a comment to reply on HN, share, report, or block its author.") }
+            Section("Comments") { Text("Tap a comment to collapse or expand its thread. Use the floating down arrow on long comments to jump to the next comment or reply. Comments start appearing as soon as they are ready. The rest loads ahead in Hacker News order. Long-press a comment to reply on HN, share, report, or block its author.") }
             Section("Accounts") { Text("Sign in from Settings to vote, reply, or submit on the Hacker News website. Ember bookmarks are separate from your HN favorites.") }
             Section("Troubleshooting") { Text("Pull down to refresh. If you’re offline, previously loaded feeds and saved story details remain available. Check your connection if new comments or search results cannot load.") }
             if let support = Bundle.main.object(forInfoDictionaryKey: "EmberSupportURL") as? String,
