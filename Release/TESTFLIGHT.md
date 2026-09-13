@@ -1,5 +1,7 @@
 # Internal TestFlight
 
+Version **1.0.0 (2.2.0)** is available for private testing as of September 13, 2026. Apple processing is `VALID`, internal status is `IN_BETA_TESTING`, and the group has one invitation. Accept the TestFlight invitation and install **Ember for Hacker News**. The successful build/sign/upload job took about two minutes. [GitHub run](https://github.com/yaportmax/ember-hacker-news/actions/runs/34737298363/attempts/2).
+
 Ember is registered as `com.maxyaport.ember` in team `4BY949S88S`, with App Store Connect app ID `6811495244`. The private internal group contains only Max's account and automatically receives uploaded builds.
 
 A main-branch code push (or manual **TestFlight upload** run on main) runs the quick core/live API checks, builds and signs Release once, and uploads it to internal TestFlight. Documentation-only pushes do not upload. Pull requests never upload. Each run/attempt has its own build number.

@@ -1,0 +1,27 @@
+{
+  "verified_at": "2026-09-13T04:25:52.586071+00:00",
+  "source_commit": "7c24f089e67c775657a1afb490c5a2f8655f0f58",
+  "source_sha256": "996a48440efbecd0e326c92813a351e275601ff7dd3442a484cce62c6fa91877",
+  "workflow_run": 34737298363,
+  "workflow_attempt": 2,
+  "job": 103671801004,
+  "checks": [
+    "30 core and live API tests",
+    "signed Release archive",
+    "codesign verification",
+    "successful Apple upload"
+  ],
+  "ui_tests_run": false,
+  "app_id": "6811495244",
+  "bundle_id": "com.maxyaport.ember",
+  "version": "1.0.0",
+  "build": "2.2.0",
+  "apple_build_id": "3401ae2b-d4d5-4b61-82e1-c988910c21d6",
+  "processing_state": "VALID",
+  "internal_build_state": "IN_BETA_TESTING",
+  "audience": "INTERNAL_ONLY",
+  "group": "Max \u2014 Internal Testing",
+  "tester_count": 1,
+  "invitation_count": 1,
+  "installed_on_physical_device_verified": false
+}

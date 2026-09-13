@@ -2,7 +2,7 @@
 
 A minimal native Hacker News reader for iPhone and iPad. Swift 6, SwiftUI, iOS 17+. No packages, backend, advertisements, or analytics.
 
-**Status:** [native validation passed](https://github.com/yaportmax/ember-hacker-news/actions/runs/34718686387): 29 deterministic core tests plus the live API test, all 14 UI tests on each of iPhone and iPad, and an unsigned Release device build with Xcode 26.6. Signing, TestFlight, and real-device review remain. See `Release/VALIDATION.md` for evidence.
+**Status:** Private TestFlight is ready: version **1.0.0 (2.2.0)**, processed by Apple and available to Max's internal group. The [signed build and upload](https://github.com/yaportmax/ember-hacker-news/actions/runs/34737298363/attempts/2) passed quick core/live API checks. Future code pushes use this short pipeline; full UI validation is manual. See [TestFlight setup](Release/TESTFLIGHT.md). Physical-device review remains; prior iPhone/iPad UI evidence is in `Release/VALIDATION.md`.
 
 ## Actual app screenshots
 
@@ -58,7 +58,9 @@ python3 scripts/release.py validate
 
 This runs unit and UI tests on iPhone, UI tests on iPad, a Release build for a physical iOS device without signing, and static project checks. Results are stored in `build/`. It writes a validation receipt only after all steps succeed. Optional `--iphone` and `--ipad` arguments select simulator UDIDs explicitly.
 
-UI tests use synthetic fixtures only when **Debug** is launched with `--ui-testing`. Normal Debug builds use the live APIs. Release builds do not contain the fixture implementation. The screenshot test attaches real simulator captures to the test results. GitHub Actions runs iPhone and iPad checks concurrently, exports `ios-iPhone-screenshots` and `ios-iPad-screenshots`, and writes `release-validation` only when every check passes. Artifacts are retained for one day. Successful main-branch runs also preserve captures and the validation receipt in an `evidence/<source-commit>` branch; reviewed captures are committed to the gallery. UI-test screenshots use synthetic stories, not the live feed. To collect available screenshots without rerunning native tests, push a new commit to `capture/<run-ID>` without a CI-skip message. Incomplete or failed runs are labeled separately and never receive a passing validation receipt. Capture collection selects the newest artifact for each device after retries.
+For everyday private testing, **TestFlight upload** runs quick core/live API checks, builds and signs Release once, and uploads it to the internal group. It runs on main-branch code pushes or manually. Signing credentials are stored in GitHub Secrets. See [TestFlight setup](Release/TESTFLIGHT.md).
+
+The full **iOS validation** workflow is manual: it runs iPhone/iPad UI tests and exports screenshots when a detailed review is needed. Debug UI tests use synthetic fixtures only with `--ui-testing`; normal launches use live APIs and Release excludes fixtures. Full validation receipts and screenshots remain separate from the quick TestFlight upload record.
 
 ## Prepare a release
 
