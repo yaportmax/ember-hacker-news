@@ -1,0 +1,78 @@
+name: TestFlight upload
+on:
+  workflow_run:
+    workflows: [iOS validation]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      validation_run_id:
+        description: Successful main-push iOS validation run to upload
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: ember-testflight
+  cancel-in-progress: false
+jobs:
+  upload:
+    if: >-
+      github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' ||
+      github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.event == 'push'
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - name: Resolve successful validation and its receipt
+        id: validation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ inputs.validation_run_id || github.event.workflow_run.id }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re, urllib.request
+          repo = os.environ['REPO']
+          run_id = os.environ['RUN_ID']
+          assert re.fullmatch(r'[0-9]+', run_id)
+          def get(path):
+              req = urllib.request.Request('https://api.github.com/repos/'+repo+path, headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as response: return json.load(response)
+          run = get('/actions/runs/'+run_id)
+          assert run['name'] == 'iOS validation' and run['event'] == 'push'
+          assert run['head_branch'] == 'main' and run['head_repository']['full_name'] == repo
+          assert run['status'] == 'completed' and run['conclusion'] == 'success'
+          sha = run['head_sha']
+          assert re.fullmatch(r'[0-9a-f]{40}',sha)
+          artifacts = get('/actions/runs/'+run_id+'/artifacts?per_page=100')['artifacts']
+          receipts = [a for a in artifacts if a['name']=='release-validation' and not a['expired']]
+          assert receipts, 'Validation receipt missing or expired; validate again.'
+          receipt = max(receipts,key=lambda a:a['id'])
+          with open(os.environ['GITHUB_OUTPUT'],'a') as output:
+              output.write(f'sha={sha}\nrun_id={run_id}\nartifact_id={receipt["id"]}\n')
+          PY
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.validation.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ steps.validation.outputs.artifact_id }}
+          merge-multiple: true
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.validation.outputs.run_id }}
+          path: Release
+      - name: Archive, sign, and upload to internal TestFlight
+        env:
+          EMBER_APPLE_SIGNING: ${{ secrets.EMBER_APPLE_SIGNING }}
+          EMBER_BUILD_NUMBER: ${{ github.run_number }}.${{ github.run_attempt }}.0
+          EMBER_SOURCE_SHA: ${{ steps.validation.outputs.sha }}
+          EMBER_VALIDATION_RUN: ${{ steps.validation.outputs.run_id }}
+        run: python3 scripts/testflight.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: testflight-upload-record
+          path: build/testflight-upload.json
+          retention-days: 30
+          if-no-files-found: error
