@@ -76,7 +76,7 @@ struct DiscussionView: View {
                         HStack {
                             Spacer()
                             Button {
-                                withAnimation(.easeInOut(duration: 0.2)) { proxy.scrollTo(target, anchor: .top) }
+                                proxy.scrollTo(target, anchor: .top)
                             } label: {
                                 Image(systemName: "arrow.down").font(.body.weight(.semibold))
                                     .frame(width: 44, height: 44).background(.regularMaterial, in: Circle())
@@ -136,6 +136,8 @@ struct DiscussionView: View {
     private func nextCommentTarget(anchors: [Int: Anchor<CGRect>], geometry: GeometryProxy) -> String? {
         let rows = model.rows(blocked: reading.archive.blockedUsers)
         guard !rows.isEmpty else { return nil }
+        if let last = rows.last, let anchor = anchors[last.item.id],
+           geometry[anchor].maxY <= geometry.size.height { return nil }
         for (index, row) in rows.enumerated() {
             guard let anchor = anchors[row.item.id] else { continue }
             let frame = geometry[anchor]

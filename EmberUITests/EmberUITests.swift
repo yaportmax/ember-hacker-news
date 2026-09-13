@@ -466,6 +466,7 @@ import XCTest
         long.buttons["next-comment"].tap()
         XCTAssertTrue(long.staticTexts["comment-text-9301"].waitForExistence(timeout: 5))
         XCTAssertTrue(long.staticTexts["comment-text-9301"].isHittable)
+        XCTAssertFalse(long.buttons["next-comment"].exists, "Hide the arrow when the remaining comments are already visible.")
         attach(long, name: "Review-11-Next-Reply")
         XCTAssertFalse(long.staticTexts["Comment removed"].exists)
         long.terminate()
