@@ -422,6 +422,40 @@ import XCTest
         }
     }
 
+    func testSettledTypographyScreens() {
+        let app = launch(["--settings-review", "dark"])
+        func capture(_ name: String) {
+            // Allow the simulator's display compositor to finish the changed frame.
+            RunLoop.current.run(until: Date().addingTimeInterval(0.6))
+            let screenshot = XCTAttachment(screenshot: app.screenshot())
+            screenshot.name = name
+            screenshot.lifetime = .keepAlways
+            add(screenshot)
+        }
+        selectTab("Settings", in: app)
+        app.buttons["Text & spacing"].tap()
+        app.segmentedControls.buttons["Comments"].tap()
+        capture("Settled-00-Defaults")
+        let line = app.sliders["adjust-Line spacing"]
+        let controls = app.collectionViews["typography-controls"]
+        for _ in 0..<5 { if line.isHittable { break }; controls.swipeUp() }
+        line.adjust(toNormalizedSliderPosition: 0)
+        capture("Settled-01-Preview-Min")
+        line.adjust(toNormalizedSliderPosition: 1)
+        capture("Settled-02-Preview-Max")
+        line.adjust(toNormalizedSliderPosition: 0)
+        selectTab("Stories", in: app)
+        app.buttons["story-1001"].tap()
+        XCTAssertTrue(app.buttons["collapse-2001"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["read-article"].isHittable)
+        capture("Settled-03-Discussion-Min")
+        selectTab("Settings", in: app)
+        line.adjust(toNormalizedSliderPosition: 1)
+        selectTab("Stories", in: app)
+        capture("Settled-04-Discussion-Max")
+        app.terminate()
+    }
+
     func testCommentSpacingAffectsPreviewAndReading() {
         let app = launch(["--settings-review", "dark"])
         selectTab("Settings", in: app)
