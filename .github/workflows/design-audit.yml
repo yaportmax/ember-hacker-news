@@ -1,7 +1,7 @@
 name: Visual review
 on:
   push:
-    branches: [design/reading-refinement, review/reading-controls, review/discussion-performance, review/spacing-settings, review/spacing-captures, review/storage-check, release/app-store]
+    branches: [design/reading-refinement, review/reading-controls, review/discussion-performance, review/spacing-settings, review/spacing-captures, review/storage-check, release/app-store, release/store-screenshots]
   workflow_dispatch:
 permissions:
   contents: read
@@ -25,14 +25,21 @@ jobs:
           EMBER_LIVE_TESTS: '1'
         run: |
           python3 - <<'PY'
-          import os, sys
+          import json, os, re, sys
           sys.path.insert(0, "scripts")
           import release
           phone, tablet = release.choose_devices()
+          store_captures = os.environ.get("GITHUB_REF_NAME") in {"release/app-store", "release/store-screenshots"}
+          if store_captures and os.environ["AUDIT_DEVICE"] == "iPhone":
+              available = json.loads(release.run(["xcrun", "simctl", "list", "devices", "available", "--json"], capture_output=True, text=True).stdout)
+              candidates = [(runtime, d) for runtime, devices in available["devices"].items() if "iOS" in runtime for d in devices if d.get("isAvailable") and "iPhone" in d["name"] and "Pro Max" in d["name"]]
+              if not candidates:
+                  raise SystemExit("App Store captures require an available iPhone Pro Max simulator.")
+              candidates.sort(key=lambda pair: tuple(int(n) for n in re.findall(r"\d+", pair[0])), reverse=True)
+              phone = candidates[0][1]
           device = phone if os.environ["AUDIT_DEVICE"] == "iPhone" else tablet
           release.BUILD.mkdir(exist_ok=True)
           capture_only = os.environ.get("GITHUB_REF_NAME") == "review/spacing-captures"
-          store_captures = os.environ.get("GITHUB_REF_NAME") == "release/app-store"
           storage_only = os.environ.get("GITHUB_REF_NAME") == "review/storage-check"
           if os.environ["AUDIT_DEVICE"] == "iPhone" and not capture_only and not storage_only and not store_captures:
               release.run(["swift", "test", "-j", "1"])

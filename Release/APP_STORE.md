@@ -14,7 +14,7 @@ Prepared September 13, 2026 after the publisher requested public release. Submis
 
 **Name:** Ember for Hacker News
 
-**Subtitle:** Stories. Discussions. No noise.
+**Subtitle:** Stories. Discussions. No noise
 
 **Primary category:** News
 
