@@ -65,6 +65,8 @@ def collection(path):
 
 record={}
 def stage(name,action):
+    if os.environ.get('EMBER_VERIFY_AND_SUBMIT')=='1' and name!='submission':
+        return
     try:
         record[name]=action()
         print(name+': '+json.dumps(record[name]),flush=True)
@@ -102,7 +104,8 @@ def age():
         attrs[key]='NONE'
     patch('ageRatingDeclarations',INFO,attrs)
     saved=get('/v1/appInfos/'+INFO+'/ageRatingDeclaration')['data']['attributes']
-    assert all(saved[k]==v for k,v in attrs.items())
+    canonical=lambda value:{'INFREQUENT':'INFREQUENT_OR_MILD','FREQUENT':'FREQUENT_OR_INTENSE'}.get(value,value)
+    assert all(canonical(saved[k])==canonical(v) for k,v in attrs.items()),'Saved age-rating answers differ.'
     return {'saved':True,'answers':attrs}
 stage('ageRating',age)
 
@@ -163,11 +166,27 @@ stage('availability',availability)
 
 def submit():
     if any(isinstance(v,dict) and 'error' in v for v in record.values()):return {'submitted':False,'reason':'Resolve preparation errors before submitting.'}
+    # Fresh read checks also support resuming without repeating saved mutations.
+    saved_contact=get('/v1/appStoreReviewDetails/'+CONTACT)['data']['attributes']
+    assert all(saved_contact[k]==v for k,v in contact.items()),'Review contact differs.'
+    saved_info=get('/v1/appInfoLocalizations/'+INFO_LOCALIZATION)['data']['attributes']
+    assert saved_info['privacyPolicyUrl']=='https://github.com/yaportmax/ember-hacker-news/blob/main/docs/PRIVACY.md'
+    saved_age=get('/v1/appInfos/'+INFO+'/ageRatingDeclaration')['data']['attributes']
+    assert all(saved_age[k] is True for k in ['unrestrictedWebAccess','socialMedia','messagingAndChat','userGeneratedContent'])
+    assert all(saved_age[k] is not None for k in ['advertising','parentalControls','profanityOrCrudeHumor','gambling','violenceRealistic'])
+    sets=collection('/v1/appStoreVersionLocalizations/'+LOCALIZATION+'/appScreenshotSets')
+    for display in ['APP_IPHONE_67','APP_IPAD_PRO_3GEN_129']:
+        sid=next(s['id'] for s in sets if s['attributes']['screenshotDisplayType']==display)
+        shots=collection('/v1/appScreenshotSets/'+sid+'/appScreenshots')
+        assert len(shots)==4 and all(s['attributes']['assetDeliveryState']['state']=='COMPLETE' for s in shots)
+    prices=get('/v1/appPriceSchedules/'+APP+'/manualPrices?'+urlencode({'filter[territory]':'USA','include':'appPricePoint'}))
+    assert any(x['type']=='appPricePoints' and float(x['attributes']['customerPrice'])==0 for x in prices.get('included',[])),'Free price not confirmed.'
+    assert get('/v1/apps/'+APP+'/appAvailabilityV2')['data']['id']==APP
     existing=collection('/v1/apps/'+APP+'/reviewSubmissions')
     ready=next((x for x in existing if x['attributes'].get('state')=='READY_FOR_REVIEW'),None)
     if not ready:ready=post('reviewSubmissions',{'platform':'IOS'},{'app':ref('apps',APP)})['data']
     rid=ready['id']
-    items=collection('/v1/reviewSubmissions/'+rid+'/items')
+    items=collection('/v1/reviewSubmissions/'+rid+'/items?include=appStoreVersion')
     if not any(x.get('relationships',{}).get('appStoreVersion',{}).get('data',{}).get('id')==VERSION for x in items):
         post('reviewSubmissionItems',rels={'reviewSubmission':ref('reviewSubmissions',rid),'appStoreVersion':ref('appStoreVersions',VERSION)})
     patch('reviewSubmissions',rid,{'submitted':True})

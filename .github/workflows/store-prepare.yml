@@ -32,4 +32,5 @@ jobs:
       - name: Complete publisher-approved Apple submission
         env:
           EMBER_APPLE_SIGNING: ${{ secrets.EMBER_APPLE_SIGNING }}
+          EMBER_VERIFY_AND_SUBMIT: '1'
         run: python3 scripts/store_prepare.py
