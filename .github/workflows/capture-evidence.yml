@@ -10,7 +10,7 @@ permissions:
   contents: write
 jobs:
   preserve:
-    if: github.event_name == 'push' || (github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main')
+    if: github.event_name == 'push' || (github.event.workflow_run.event == 'workflow_dispatch' && github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -29,7 +29,7 @@ jobs:
               request = urllib.request.Request(url, headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json'})
               with urllib.request.urlopen(request) as response: return json.load(response)
           run = read(base)
-          assert run['event'] == 'push' and run['head_branch'] == 'main' and run['name'] == 'iOS validation'
+          assert run['event'] in ['push', 'workflow_dispatch'] and run['head_branch'] == 'main' and run['name'] == 'iOS validation'
           assert re.fullmatch(r'[a-f0-9]{40}', run['head_sha'])
           artifacts = read(base + '/artifacts?per_page=100')['artifacts']
           def latest(name):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Archive validated source and upload an internal-only TestFlight build."""
+"""Run quick core checks, sign once, and upload an internal TestFlight build."""
 import base64
 import json
 import os
@@ -15,18 +15,13 @@ import release
 
 
 def main():
-    # Packaging automation and app source are checked out separately. The receipt
-    # always validates the app checkout, including its exact project/config files.
     release.ROOT = Path.cwd().resolve()
     release.BUILD = release.ROOT/'build'
     release.RELEASE = release.ROOT/'Release'
     release.RECEIPT = release.RELEASE/'validation.json'
     release.require_macos()
     release.static_checks()
-    receipt = json.loads(release.RECEIPT.read_text())
     fingerprint = release.fingerprint()
-    if receipt.get('source_sha256') != fingerprint or not receipt.get('live_api_checked'):
-        raise SystemExit('A matching successful native CI receipt is required.')
     build_number = os.environ['EMBER_BUILD_NUMBER']
     if not re.fullmatch(r'[1-9]\d{0,3}\.\d{1,2}\.\d{1,2}', build_number):
         raise SystemExit('Invalid Apple build number.')
@@ -42,6 +37,9 @@ def main():
     profile_uuid = signing['profile_uuid']
     if not re.fullmatch(r'[A-Z0-9]{10}', key_id) or not re.fullmatch(r'[A-Fa-f0-9-]{36}', profile_uuid):
         raise SystemExit('Invalid signing identifiers.')
+    # The full simulator suite is an optional manual workflow. These quick
+    # service checks precede the one native compilation performed by archive.
+    release.run(['swift','test','-j','1'],env={**os.environ,'EMBER_LIVE_TESTS':'1'})
     password = signing['certificate_password']
     keychain_password = secrets.token_urlsafe(32)
     for value in [password, keychain_password]:
@@ -103,7 +101,7 @@ def main():
             release.run(['xcrun','altool','--upload-app','--type','ios','--file',ipas[0],'--apiKey',key_id,'--apiIssuer',signing['issuer_id']])
             if release.fingerprint() != fingerprint:
                 raise RuntimeError('Validated source changed during packaging.')
-            result = {'uploaded_at':datetime.now(timezone.utc).isoformat(),'source_commit':os.environ['EMBER_SOURCE_SHA'],'source_sha256':fingerprint,'validation_run':os.environ['EMBER_VALIDATION_RUN'],'bundle_id':bundle,'version':info['CFBundleShortVersionString'],'build':build_number,'internal_only':True,'status':'uploaded; Apple processing and tester availability must be verified separately'}
+            result = {'uploaded_at':datetime.now(timezone.utc).isoformat(),'source_commit':os.environ['EMBER_SOURCE_SHA'],'source_sha256':fingerprint,'workflow_run':os.environ['EMBER_VALIDATION_RUN'],'checks':['static project checks','core and live API tests','signed Release archive'],'ui_tests_run':False,'bundle_id':bundle,'version':info['CFBundleShortVersionString'],'build':build_number,'internal_only':True,'status':'uploaded; Apple processing and tester availability must be verified separately'}
             (release.BUILD/'testflight-upload.json').write_text(json.dumps(result,indent=2)+'\n')
             print('Signed internal-only build uploaded to Apple; processing remains.',flush=True)
         finally:
