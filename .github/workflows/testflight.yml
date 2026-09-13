@@ -52,9 +52,18 @@ jobs:
           with open(os.environ['GITHUB_OUTPUT'],'a') as output:
               output.write(f'sha={sha}\nrun_id={run_id}\nartifact_id={receipt["id"]}\n')
           PY
-      - uses: actions/checkout@v4
+      - name: Check out trusted packaging automation
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: automation
+          sparse-checkout: scripts
+          persist-credentials: false
+      - name: Check out validated app source
+        uses: actions/checkout@v4
         with:
           ref: ${{ steps.validation.outputs.sha }}
+          path: source
           persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
@@ -62,17 +71,18 @@ jobs:
           merge-multiple: true
           github-token: ${{ github.token }}
           run-id: ${{ steps.validation.outputs.run_id }}
-          path: Release
+          path: source/Release
       - name: Archive, sign, and upload to internal TestFlight
+        working-directory: source
         env:
           EMBER_APPLE_SIGNING: ${{ secrets.EMBER_APPLE_SIGNING }}
           EMBER_BUILD_NUMBER: ${{ github.run_number }}.${{ github.run_attempt }}.0
           EMBER_SOURCE_SHA: ${{ steps.validation.outputs.sha }}
           EMBER_VALIDATION_RUN: ${{ steps.validation.outputs.run_id }}
-        run: python3 scripts/testflight.py
+        run: python3 ../automation/scripts/testflight.py
       - uses: actions/upload-artifact@v4
         with:
           name: testflight-upload-record
-          path: build/testflight-upload.json
+          path: source/build/testflight-upload.json
           retention-days: 30
           if-no-files-found: error

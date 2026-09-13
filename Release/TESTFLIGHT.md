@@ -2,7 +2,7 @@
 
 Ember is registered as `com.maxyaport.ember` in team `4BY949S88S`, with App Store Connect app ID `6811495244`. The private internal group contains only Max's account and automatically receives uploaded builds.
 
-After a successful main-branch push runs all native validation jobs, `TestFlight upload` downloads that exact run's receipt, checks its source fingerprint, creates a signed Release archive, and uploads an internal-only build. Pull requests never upload. A manual run on main can select an existing successful main-push validation run while its receipt artifact remains available. Each upload run/attempt has its own build number.
+After a successful main-branch push runs all native validation jobs, `TestFlight upload` downloads that exact run's receipt, checks its source fingerprint, creates a signed Release archive, and uploads an internal-only build. Packaging scripts come from the trusted workflow commit; the app itself comes from the validated commit. Pull requests never upload. A manual run on main can select an existing successful main-push validation run while its receipt artifact remains available. Each upload run/attempt has its own build number.
 
 `EMBER_APPLE_SIGNING` is an encrypted GitHub Actions repository secret containing the Apple API key, distribution certificate and private key, provisioning profile, and certificate password. It must never be committed or included in artifacts. The runner imports credentials into a temporary keychain and removes its local signing files afterward. The certificate and profile must be renewed before expiry. Only trusted repository collaborators should be able to modify workflows that use this secret.
 

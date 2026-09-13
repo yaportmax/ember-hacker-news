@@ -7,7 +7,6 @@ from pathlib import Path
 import plistlib
 import re
 import secrets
-import shutil
 import subprocess
 import tempfile
 from datetime import datetime, timezone
@@ -16,6 +15,12 @@ import release
 
 
 def main():
+    # Packaging automation and app source are checked out separately. The receipt
+    # always validates the app checkout, including its exact project/config files.
+    release.ROOT = Path.cwd().resolve()
+    release.BUILD = release.ROOT/'build'
+    release.RELEASE = release.ROOT/'Release'
+    release.RECEIPT = release.RELEASE/'validation.json'
     release.require_macos()
     release.static_checks()
     receipt = json.loads(release.RECEIPT.read_text())
@@ -42,7 +47,7 @@ def main():
     for value in [password, keychain_password]:
         print('::add-mask::'+value, flush=True)
     release.BUILD.mkdir(exist_ok=True)
-    profile_dir = Path.home()/'Library/MobileDevice/Provisioning Profiles'
+    profile_dir = Path.home()/'Library/Developer/Xcode/UserData/Provisioning Profiles'
     profile_path = profile_dir/(profile_uuid+'.mobileprovision')
     api_dir = Path.home()/'.appstoreconnect/private_keys'
     api_path = api_dir/f'AuthKey_{key_id}.p8'
