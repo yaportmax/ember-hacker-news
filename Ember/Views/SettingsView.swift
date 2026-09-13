@@ -147,14 +147,7 @@ private struct TypographySettingsView: View {
             Group {
                 if let midpoint {
                     // Keep the preferred size at the center without removing the larger sizes.
-                    Slider(value: Binding(get: {
-                        let current = value.wrappedValue
-                        return current <= midpoint ? (current - range.lowerBound) / (midpoint - range.lowerBound) * 0.5
-                            : 0.5 + (current - midpoint) / (range.upperBound - midpoint) * 0.5
-                    }, set: { position in
-                        value.wrappedValue = (position <= 0.5 ? range.lowerBound + position * 2 * (midpoint - range.lowerBound)
-                            : midpoint + (position - 0.5) * 2 * (range.upperBound - midpoint)).rounded()
-                    }), in: 0...1)
+                    Slider(value: centered(value, range: range, midpoint: midpoint), in: 0...1)
                 } else { Slider(value: value, in: range, step: 1) }
             }
             .accessibilityLabel(title)
@@ -168,6 +161,24 @@ private struct TypographySettingsView: View {
                 }
             }
         }
+    }
+
+    private func centered(_ value: Binding<Double>, range: ClosedRange<Double>, midpoint: Double) -> Binding<Double> {
+        Binding<Double>(get: {
+            let current = value.wrappedValue
+            if current <= midpoint {
+                return (current - range.lowerBound) / (midpoint - range.lowerBound) * 0.5
+            }
+            return 0.5 + (current - midpoint) / (range.upperBound - midpoint) * 0.5
+        }, set: { position in
+            let points: Double
+            if position <= 0.5 {
+                points = range.lowerBound + position * 2 * (midpoint - range.lowerBound)
+            } else {
+                points = midpoint + (position - 0.5) * 2 * (range.upperBound - midpoint)
+            }
+            value.wrappedValue = points.rounded()
+        })
     }
 }
 
