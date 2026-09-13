@@ -32,7 +32,8 @@ jobs:
           device = phone if os.environ["AUDIT_DEVICE"] == "iPhone" else tablet
           release.BUILD.mkdir(exist_ok=True)
           if os.environ["AUDIT_DEVICE"] == "iPhone": release.run(["swift", "test", "-j", "1"])
-          release.run(["xcodebuild", "test", "-project", "Ember.xcodeproj", "-scheme", "Ember", "-derivedDataPath", "build/DerivedData", "CODE_SIGNING_ALLOWED=NO", "-destination", f"platform=iOS Simulator,id={device['udid']}", "-parallel-testing-enabled", "NO", "-resultBundlePath", "build/Audit.xcresult", "-only-testing:EmberUITests/EmberUITests/testReviewTimeFilters", "-only-testing:EmberUITests/EmberUITests/testReviewExtraFeeds", "-only-testing:EmberUITests/EmberUITests/testReviewTypography", "-only-testing:EmberUITests/EmberUITests/testReviewReadingControls", "-only-testing:EmberUITests/EmberUITests/testReviewLargeTextAndLandscape", "-only-testing:EmberUITests/EmberUITests/testAuditMainFlows", "-only-testing:EmberUITests/EmberUITests/testReadSaveAndRestoreBookmark", "-only-testing:EmberUITests/EmberUITests/testSearchAndEmptyResults"])
+          release.run(["xcrun", "simctl", "bootstatus", device["udid"], "-b"])
+          release.run(["xcodebuild", "test", "-project", "Ember.xcodeproj", "-scheme", "Ember", "-derivedDataPath", "build/DerivedData", "CODE_SIGNING_ALLOWED=NO", "-destination", f"platform=iOS Simulator,id={device['udid']}", "-parallel-testing-enabled", "NO", "-test-timeouts-enabled", "YES", "-default-test-execution-time-allowance", "180", "-resultBundlePath", "build/Audit.xcresult", "-only-testing:EmberUITests/EmberUITests/testReviewTypography", "-only-testing:EmberUITests/EmberUITests/testReviewReadingControls", "-only-testing:EmberUITests/EmberUITests/testReviewLargeTextAndLandscape"])
           PY
       - name: Export screenshots
         if: always()

@@ -75,26 +75,21 @@ private struct TypographySettingsView: View {
                 .foregroundStyle(EmberStyle.secondaryText)
                 .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 4)
                 .accessibilityIdentifier("typography-preview")
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        if editingComments {
-                            previewComment(id: 1, author: "alex", text: "<b>Good typography</b> gives ideas room to breathe.", depth: 0)
-                            Divider()
-                            previewComment(id: 2, author: "riley", text: "Replies are easy to follow.", depth: 1)
-                                .padding(.leading, replyIndent).id("preview-reply")
-                        } else {
-                            StoryRow(item: HNItem(id: -1, type: "story", title: "The best part of the web is the people who make it", url: "https://example.com", score: 128, descendants: 42), openDiscussion: {}).allowsHitTesting(false)
-                            Divider()
-                            StoryRow(item: HNItem(id: -2, type: "story", title: "Small things, made with care", url: "https://example.com", score: 64, descendants: 12), openDiscussion: {}).allowsHitTesting(false)
-                        }
-                    }.padding(.horizontal, 20).padding(.bottom, 12)
-                }
-                .onChange(of: replyIndent) { _, _ in
-                    if editingComments { proxy.scrollTo("preview-reply", anchor: .bottom) }
-                }
-                .accessibilityIdentifier("typography-preview-scroll")
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    if editingComments {
+                        previewComment(id: 1, author: "alex", text: "<b>Good typography</b> gives ideas room to breathe.", depth: 0)
+                        Divider()
+                        previewComment(id: 2, author: "riley", text: "Replies are easy to follow.", depth: 1)
+                            .padding(.leading, replyIndent)
+                    } else {
+                        StoryRow(item: HNItem(id: -1, type: "story", title: "The best part of the web is the people who make it", url: "https://example.com", score: 128, descendants: 42), openDiscussion: {}).allowsHitTesting(false)
+                        Divider()
+                        StoryRow(item: HNItem(id: -2, type: "story", title: "Small things, made with care", url: "https://example.com", score: 64, descendants: 12), openDiscussion: {}).allowsHitTesting(false)
+                    }
+                }.padding(.horizontal, 20).padding(.bottom, 12)
             }
+            .accessibilityIdentifier("typography-preview-scroll")
         }.background(EmberStyle.canvas)
     }
 

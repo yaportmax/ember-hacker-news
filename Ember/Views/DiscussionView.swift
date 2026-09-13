@@ -3,8 +3,6 @@ import SwiftUI
 struct DiscussionView: View {
     @AppStorage("commentRowSpacing") private var rowSpacing = 7.0
     @AppStorage("replyIndent") private var replyIndent = 12.0
-    @State private var commentFrames: [Int: CGRect] = [:]
-    @State private var viewportHeight: CGFloat = 0
     @State private var model: DiscussionModel
     @State private var userToBlock: String?
     @State private var reportItem: HNItem?
@@ -64,37 +62,32 @@ struct DiscussionView: View {
                         }
                         .padding(.leading, indent(row.depth))
                         .id(row.id)
-                        .background {
-                            GeometryReader { geometry in
-                                Color.clear.preference(key: CommentFramesKey.self,
-                                    value: [comment.id: geometry.frame(in: .named("discussion"))])
-                            }
-                        }
+                        .anchorPreference(key: CommentAnchorsKey.self, value: .bounds) { [comment.id: $0] }
                     }
                 }
             }.padding(.horizontal, 20).padding(.bottom, 72)
         }
         .readingWidth()
-        .coordinateSpace(name: "discussion")
-        .background {
+        .overlayPreferenceValue(CommentAnchorsKey.self) { anchors in
             GeometryReader { geometry in
-                Color.clear.preference(key: DiscussionHeightKey.self, value: geometry.size.height)
-            }
-        }
-        .onPreferenceChange(CommentFramesKey.self) { commentFrames = $0 }
-        .onPreferenceChange(DiscussionHeightKey.self) { viewportHeight = $0 }
-        .overlay(alignment: .bottomTrailing) {
-            if let target = nextCommentTarget {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) { proxy.scrollTo(target, anchor: .top) }
-                } label: {
-                    Image(systemName: "arrow.down").font(.body.weight(.semibold))
-                        .frame(width: 44, height: 44).background(.regularMaterial, in: Circle())
-                        .overlay(Circle().strokeBorder(.primary.opacity(0.08)))
+                if let target = nextCommentTarget(anchors: anchors, geometry: geometry) {
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) { proxy.scrollTo(target, anchor: .top) }
+                            } label: {
+                                Image(systemName: "arrow.down").font(.body.weight(.semibold))
+                                    .frame(width: 44, height: 44).background(.regularMaterial, in: Circle())
+                                    .overlay(Circle().strokeBorder(.primary.opacity(0.08)))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Next comment or reply")
+                            .accessibilityIdentifier("next-comment")
+                        }
+                    }.padding(16)
                 }
-                .buttonStyle(.plain).padding(16)
-                .accessibilityLabel("Next comment or reply")
-                .accessibilityIdentifier("next-comment")
             }
         }
         .navigationTitle(model.story.type == "job" ? "Job" : "Discussion").navigationBarTitleDisplayMode(.inline)
@@ -140,16 +133,17 @@ struct DiscussionView: View {
 
     }
 
-    private var nextCommentTarget: String? {
-        guard viewportHeight > 0 else { return nil }
+    private func nextCommentTarget(anchors: [Int: Anchor<CGRect>], geometry: GeometryProxy) -> String? {
         let rows = model.rows(blocked: reading.archive.blockedUsers)
+        guard !rows.isEmpty else { return nil }
         for (index, row) in rows.enumerated() {
-            guard let frame = commentFrames[row.item.id],
-                  frame.maxY > 12, frame.minY < viewportHeight,
-                  index + 1 < rows.count else { continue }
-            return rows[index + 1].id
+            guard let anchor = anchors[row.item.id] else { continue }
+            let frame = geometry[anchor]
+            if frame.maxY > 16 && frame.minY < geometry.size.height {
+                return index + 1 < rows.count ? rows[index + 1].id : nil
+            }
         }
-        return nil
+        return rows.first?.id
     }
 
     private var storyHeader: some View {
@@ -283,14 +277,9 @@ struct CommentView: View {
     }
 }
 
-private struct CommentFramesKey: PreferenceKey {
-    static let defaultValue: [Int: CGRect] = [:]
-    static func reduce(value: inout [Int: CGRect], nextValue: () -> [Int: CGRect]) {
+private struct CommentAnchorsKey: PreferenceKey {
+    static let defaultValue: [Int: Anchor<CGRect>] = [:]
+    static func reduce(value: inout [Int: Anchor<CGRect>], nextValue: () -> [Int: Anchor<CGRect>]) {
         value.merge(nextValue(), uniquingKeysWith: { _, new in new })
     }
-}
-
-private struct DiscussionHeightKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }

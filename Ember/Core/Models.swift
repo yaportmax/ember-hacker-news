@@ -253,7 +253,10 @@ enum HNList: String, CaseIterable, Identifiable, Hashable, Sendable {
         case .noobcomments: "Comments from new accounts."
         }
     }
-    var url: URL { HNLinks.home.appendingPathComponent(rawValue) }
+    var url: URL {
+        if self == .whoishiring { return URL(string: "https://news.ycombinator.com/submitted?id=whoishiring")! }
+        return HNLinks.home.appendingPathComponent(rawValue)
+    }
 }
 
 struct HNListingPage: Sendable {
