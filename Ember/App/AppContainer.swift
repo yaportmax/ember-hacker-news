@@ -24,7 +24,7 @@ final class AppContainer {
         if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
             let defaults = UserDefaults.standard
             if !ProcessInfo.processInfo.arguments.contains("--preserve-state") {
-                for (key, value) in ["selectedFeed": "top", "compactRows": false,
+                for (key, value) in ["selectedFeed": "top", "feedPeriod": "live", "feedStartDate": 0.0, "feedEndDate": 0.0, "compactRows": false,
                                      "hideReadStories": false, "dimReadStories": true,
                                      "externalBrowser": false, "readerMode": true,
                                      "storyTextSize": 17.0, "storyFont": "system", "storyLineSpacing": 2.0,

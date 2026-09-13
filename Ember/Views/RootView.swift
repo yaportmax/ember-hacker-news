@@ -16,15 +16,15 @@ struct RootView: View {
         @Bindable var app = app
         TabView(selection: $selectedTab) {
             NavigationStack(path: $storyPath) {
-                FeedView(service: app.service, cache: app.cache, openDiscussion: { storyPath.append($0) })
+                FeedView(service: app.service, cache: app.cache, openDiscussion: { navigate($0, tab: .stories) })
                     .navigationDestination(for: HNItem.self) { item in DiscussionView(story: item, service: app.service) }
             }.tabItem { Label("Stories", systemImage: "text.alignleft") }.tag(Tab.stories)
             NavigationStack(path: $searchPath) {
-                SearchView(service: app.service, openDiscussion: { searchPath.append($0) })
+                SearchView(service: app.service, openDiscussion: { navigate($0, tab: .search) })
                     .navigationDestination(for: HNItem.self) { item in DiscussionView(story: item, service: app.service) }
             }.tabItem { Label("Search", systemImage: "magnifyingglass") }.tag(Tab.search)
             NavigationStack(path: $savedPath) {
-                SavedView(openDiscussion: { savedPath.append($0) })
+                SavedView(openDiscussion: { navigate($0, tab: .saved) })
                     .navigationDestination(for: HNItem.self) { item in DiscussionView(story: item, service: app.service) }
             }.tabItem { Label("Saved", systemImage: "bookmark") }.tag(Tab.saved)
             NavigationStack { SettingsView() }
@@ -55,6 +55,33 @@ struct RootView: View {
             }
         }
         .onOpenURL { url in openDeepLink(url) }
+    }
+
+    private func navigate(_ item: HNItem, tab: Tab) {
+        func push(_ item: HNItem) {
+            switch tab {
+            case .stories: storyPath.append(item)
+            case .search: searchPath.append(item)
+            case .saved: savedPath.append(item)
+            case .settings: break
+            }
+        }
+        guard item.type == "comment" else { push(item); return }
+        deepLinkTask?.cancel(); openingLink = true
+        deepLinkTask = Task {
+            defer { if !Task.isCancelled { openingLink = false } }
+            do {
+                var root = item; var seen = Set<Int>()
+                while root.type == "comment" {
+                    guard seen.count < 100, seen.insert(root.id).inserted, let parent = root.parent,
+                          let next = try await app.service.item(parent, fresh: false) else { throw AppError.missing }
+                    root = next
+                }
+                try Task.checkCancellation()
+                guard root.isStory else { throw AppError.missing }
+                push(root)
+            } catch { if !Task.isCancelled { app.error = friendlyError(error) } }
+        }
     }
 
     private func openDeepLink(_ url: URL) {

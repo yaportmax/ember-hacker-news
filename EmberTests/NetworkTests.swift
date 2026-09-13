@@ -46,6 +46,29 @@ final class NetworkTests: XCTestCase, @unchecked Sendable {
         config.protocolClasses = [MockURLProtocol.self]
         return HNClient(session: URLSession(configuration: config))
     }
+    func testHNListingExtractsRankedIDsAndSafePagination() {
+        let html = #"<tr class="athing" id="22"><tr id='11' class='athing'><a href='bestcomments?p=2&amp;h=48' class='morelink'>More</a>"#
+        let parsed = HNClient.listingLinks(html, base: HNList.bestcomments.url)
+        XCTAssertEqual(parsed.ids, [22, 11])
+        XCTAssertEqual(parsed.next?.absoluteString, "https://news.ycombinator.com/bestcomments?p=2&h=48")
+        XCTAssertNil(HNClient.listingLinks(#"<a href='https://evil.example/' class='morelink'>More</a>"#, base: HNList.bestcomments.url).next)
+    }
+    func testArchiveURLIncludesBothBoundsAndCategory() {
+        let window = ArchiveWindow(after: 100, before: 200)
+        let url = HNClient.archiveURL(.ask, window: window, page: 2)
+        let query = URLComponents(url: url, resolvingAgainstBaseURL: false)!.queryItems!
+        XCTAssertEqual(query.first { $0.name == "tags" }?.value, "ask_hn")
+        XCTAssertEqual(query.first { $0.name == "numericFilters" }?.value, "created_at_i>=100,created_at_i<200")
+        XCTAssertEqual(query.first { $0.name == "page" }?.value, "2")
+        XCTAssertEqual(HNClient.archiveURL(.new, window: window, page: 0).lastPathComponent, "search_by_date")
+    }
+    func testCustomPeriodIncludesWholeEndDay() {
+        var calendar = Calendar(identifier: .gregorian); calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let date = Date(timeIntervalSince1970: 86400 * 10 + 3600)
+        let range = FeedPeriod.custom.window(now: date.addingTimeInterval(86400 * 5), calendar: calendar, start: date, end: date)!
+        XCTAssertEqual(range.after, 86400 * 10)
+        XCTAssertEqual(range.before, 86400 * 11)
+    }
     func testHTTPServerErrorRetriesOnce() async throws {
         let path = "/v0/topstories.json"
         MockURLProtocol.fixtures.install([.init(status: 503, body: "unavailable"), .init(status: 200, body: "[1,2]")], path: path)
@@ -111,6 +134,12 @@ final class LiveAPITests: XCTestCase, @unchecked Sendable {
         }
         let user = try await service.user("pg")
         XCTAssertEqual(user.id, "pg")
+        let archive = try await service.archive(.top, window: ArchiveWindow(after: 0, before: Date().timeIntervalSince1970), page: 0)
+        XCTAssertFalse(archive.items.isEmpty)
+        XCTAssertGreaterThanOrEqual(archive.items[0].score ?? 0, archive.items[1].score ?? 0)
+        let comments = try await service.listing(HNList.bestcomments.url)
+        XCTAssertFalse(comments.items.isEmpty)
+        XCTAssertTrue(comments.items.allSatisfy { $0.type == "comment" })
         let results = try await service.search("Swift", order: .relevant, period: .all, page: 0)
         XCTAssertFalse(results.items.isEmpty)
     }

@@ -43,6 +43,14 @@ struct FixtureService: HNService {
         return (Self.stories + Self.comments).first { $0.id == id }
     }
     func user(_ name: String) async throws -> HNUser { HNUser(id: name, created: 1_420_070_400, karma: 12_483, about: "Building small, useful things.<p>Curious about software, cities, and the web.") }
+    func listing(_ url: URL) async throws -> HNListingPage {
+        HNListingPage(items: url.path.contains("comments") || url.path.contains("highlights") ? Self.comments : Self.stories, next: nil)
+    }
+    func archive(_ feed: Feed, window: ArchiveWindow, page: Int) async throws -> SearchPage {
+        let item = HNItem(id: 9401, type: "story", by: "archive", time: window.after + 1,
+                          title: "A favorite from the archive", url: "https://example.com", score: 2048, descendants: 128)
+        return SearchPage(items: [item], page: 0, totalPages: 1, totalHits: 1)
+    }
     func search(_ query: String, order: SearchOrder, period: SearchPeriod, page: Int) async throws -> SearchPage {
         let hits = Self.stories.filter { $0.displayTitle.localizedCaseInsensitiveContains(query) }
         return SearchPage(items: hits, page: 0, totalPages: 1, totalHits: hits.count)

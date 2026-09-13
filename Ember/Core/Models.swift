@@ -16,6 +16,43 @@ enum Feed: String, CaseIterable, Codable, Identifiable, Sendable {
     var endpoint: String { self == .jobs ? "jobstories" : "\(rawValue)stories" }
 }
 
+enum FeedPeriod: String, CaseIterable, Identifiable {
+    case live, day, week, month, year, all, custom
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .live: "Live"
+        case .day: "Today"
+        case .week: "Past week"
+        case .month: "Past month"
+        case .year: "Past year"
+        case .all: "All time"
+        case .custom: "Custom dates"
+        }
+    }
+    func window(now: Date = Date(), calendar: Calendar = .current, start: Date = Date(), end: Date = Date()) -> ArchiveWindow? {
+        let after: Date
+        switch self {
+        case .live: return nil
+        case .day: after = calendar.startOfDay(for: now)
+        case .week: after = calendar.date(byAdding: .day, value: -7, to: now)!
+        case .month: after = calendar.date(byAdding: .month, value: -1, to: now)!
+        case .year: after = calendar.date(byAdding: .year, value: -1, to: now)!
+        case .all: after = Date(timeIntervalSince1970: 0)
+        case .custom:
+            let lower = calendar.startOfDay(for: min(start, end))
+            let upper = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: max(start, end)))!
+            return ArchiveWindow(after: lower.timeIntervalSince1970, before: min(upper, now).timeIntervalSince1970)
+        }
+        return ArchiveWindow(after: after.timeIntervalSince1970, before: now.timeIntervalSince1970)
+    }
+}
+
+struct ArchiveWindow: Hashable, Sendable {
+    let after: TimeInterval
+    let before: TimeInterval
+}
+
 struct HNItem: Codable, Hashable, Identifiable, Sendable {
     let id: Int
     var type: String?
@@ -178,4 +215,48 @@ extension Array where Element: Identifiable, Element.ID: Hashable {
         var seen = Set<Element.ID>()
         return filter { seen.insert($0.id).inserted }
     }
+}
+enum HNList: String, CaseIterable, Identifiable, Hashable, Sendable {
+    case bestcomments, newcomments, highlights, active, asknew, shownew, whoishiring, launches, classic, pool, invited, noobstories, noobcomments
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .bestcomments: "Best Comments"
+        case .newcomments: "New Comments"
+        case .highlights: "Comment Highlights"
+        case .active: "Active Discussions"
+        case .asknew: "Newest Ask HN"
+        case .shownew: "Newest Show HN"
+        case .whoishiring: "Who Is Hiring"
+        case .launches: "Launch HN"
+        case .classic: "Classic"
+        case .pool: "Second Chance"
+        case .invited: "Invited to Repost"
+        case .noobstories: "Newcomer Stories"
+        case .noobcomments: "Newcomer Comments"
+        }
+    }
+    var detail: String {
+        switch self {
+        case .bestcomments: "Most-upvoted comments from the last 48 hours."
+        case .newcomments: "The newest comments across Hacker News."
+        case .highlights: "Notable comments selected from across the years."
+        case .active: "The most active current discussions."
+        case .asknew: "Ask HN posts, newest first."
+        case .shownew: "Show HN posts, newest first."
+        case .whoishiring: "Monthly hiring discussions."
+        case .launches: "YC startup launches."
+        case .classic: "The front page as voted by longstanding accounts."
+        case .pool: "Stories selected for another chance at the front page."
+        case .invited: "Overlooked submissions invited to repost."
+        case .noobstories: "Stories from new accounts."
+        case .noobcomments: "Comments from new accounts."
+        }
+    }
+    var url: URL { HNLinks.home.appendingPathComponent(rawValue) }
+}
+
+struct HNListingPage: Sendable {
+    let items: [HNItem]
+    let next: URL?
 }

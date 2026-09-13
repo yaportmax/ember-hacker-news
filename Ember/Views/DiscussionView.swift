@@ -21,61 +21,60 @@ struct DiscussionView: View {
 
     var body: some View {
         ScrollViewReader { proxy in
-        List {
-            storyHeader.listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 4, trailing: 20))
-            if let error = model.error { InlineNotice(message: error) { Task { await reload() } }.listRowSeparator(.hidden) }
-            if !model.story.isVisible {
-                InlineNotice(message: "This story has been removed from Hacker News.", symbol: "text.badge.xmark").listRowSeparator(.hidden)
-            } else if let text = model.story.text, !text.isEmpty {
-                RichText(text).padding(.vertical, 12).listRowSeparator(.hidden)
-            }
-            ForEach(model.polls.filter(\.isVisible)) { option in
-                HStack(alignment: .top) {
-                    Text(max(0, option.score ?? 0).formatted()).font(.subheadline.monospacedDigit()).foregroundStyle(Color.accentColor).frame(minWidth: 32)
-                    RichText(option.text ?? "")
-                }.padding(.vertical, 5)
-            }
-            if model.story.isVisible, model.story.articleURL == nil {
-                articleAction.listRowSeparator(.hidden)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-            }
-            if model.story.type != "job" {
-                Text(model.story.commentCount == 1 ? "1 comment" : "\(model.story.commentCount.formatted()) comments")
-                    .font(.subheadline.weight(.medium)).foregroundStyle(EmberStyle.secondaryText)
-                    .padding(.top, 12).padding(.bottom, 2)
-                    .listRowSeparator(.hidden).accessibilityAddTraits(.isHeader)
-                if model.isLoading, model.comments.isEmpty {
-                    HStack { Spacer(); ProgressView("Loading discussion…"); Spacer() }.padding(.vertical, 28).listRowSeparator(.hidden)
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                storyHeader.padding(.top, 8).padding(.bottom, 4)
+                if let error = model.error { InlineNotice(message: error) { Task { await reload() } } }
+                if !model.story.isVisible {
+                    InlineNotice(message: "This story has been removed from Hacker News.", symbol: "text.badge.xmark")
+                } else if let text = model.story.text, !text.isEmpty {
+                    RichText(text).padding(.vertical, 12)
                 }
-                if (model.story.kids ?? []).isEmpty, !model.isLoading, model.error == nil {
-                    EmptyState(title: "Quiet for now", symbol: "bubble.left.and.bubble.right", detail: "Be the first to join the discussion on Hacker News.")
-                        .listRowSeparator(.hidden)
+                ForEach(model.polls.filter(\.isVisible)) { option in
+                    HStack(alignment: .top) {
+                        Text(max(0, option.score ?? 0).formatted()).font(.subheadline.monospacedDigit()).foregroundStyle(Color.accentColor).frame(minWidth: 32)
+                        RichText(option.text ?? "")
+                    }.padding(.vertical, 5)
                 }
-                if !(model.story.kids ?? []).isEmpty, !model.isLoading, model.error == nil,
-                   model.rows(blocked: reading.archive.blockedUsers).isEmpty {
-                    EmptyState(title: "Comments are hidden", symbol: "eye.slash", detail: "There are no visible comments right now. Removed comments and blocked users are hidden.")
-                        .listRowSeparator(.hidden)
-                }
-                ForEach(model.rows(blocked: reading.archive.blockedUsers)) { row in
-                    let comment = row.item
-                        CommentView(item: comment, depth: row.depth, collapsed: model.collapsed.contains(comment.id),
-                                    isOP: comment.by == model.story.by,
-                                    profile: { selectedUsername = comment.by },
-                                    toggle: { model.toggle(comment.id) }, block: { userToBlock = comment.by }, report: { reportItem = comment })
-                            .id(row.id)
-                            .background {
-                                GeometryReader { geometry in
-                                    Color.clear.preference(key: CommentFramesKey.self,
-                                        value: [comment.id: geometry.frame(in: .named("discussion"))])
-                                }
+                if model.story.isVisible, model.story.articleURL == nil { articleAction }
+                if model.story.type != "job" {
+                    Text(model.story.commentCount == 1 ? "1 comment" : "\(model.story.commentCount.formatted()) comments")
+                        .font(.subheadline.weight(.medium)).foregroundStyle(EmberStyle.secondaryText)
+                        .padding(.top, 20).padding(.bottom, 12).accessibilityAddTraits(.isHeader)
+                    if model.isLoading, model.comments.isEmpty {
+                        HStack { Spacer(); ProgressView("Loading discussion…"); Spacer() }.padding(.vertical, 28)
+                    }
+                    if (model.story.kids ?? []).isEmpty, !model.isLoading, model.error == nil {
+                        EmptyState(title: "Quiet for now", symbol: "bubble.left.and.bubble.right", detail: "Be the first to join the discussion on Hacker News.")
+                    }
+                    if !(model.story.kids ?? []).isEmpty, !model.isLoading, model.error == nil,
+                       model.rows(blocked: reading.archive.blockedUsers).isEmpty {
+                        EmptyState(title: "Comments are hidden", symbol: "eye.slash", detail: "There are no visible comments right now. Removed comments and blocked users are hidden.")
+                    }
+                    ForEach(model.rows(blocked: reading.archive.blockedUsers)) { row in
+                        let comment = row.item
+                        VStack(spacing: 0) {
+                            CommentView(item: comment, depth: row.depth, collapsed: model.collapsed.contains(comment.id),
+                                        isOP: comment.by == model.story.by,
+                                        profile: { selectedUsername = comment.by },
+                                        toggle: { model.toggle(comment.id) }, block: { userToBlock = comment.by }, report: { reportItem = comment })
+                                .padding(.top, rowSpacing)
+                                .padding(.bottom, model.collapsed.contains(comment.id) ? 0 : rowSpacing)
+                            Divider()
+                        }
+                        .padding(.leading, indent(row.depth))
+                        .id(row.id)
+                        .background {
+                            GeometryReader { geometry in
+                                Color.clear.preference(key: CommentFramesKey.self,
+                                    value: [comment.id: geometry.frame(in: .named("discussion"))])
                             }
-                            .listRowInsets(EdgeInsets(top: rowSpacing, leading: 20 + indent(row.depth), bottom: model.collapsed.contains(comment.id) ? 0 : rowSpacing, trailing: 20))
-
+                        }
+                    }
                 }
-            }
+            }.padding(.horizontal, 20).padding(.bottom, 72)
         }
-        .listStyle(.plain).readingWidth()
+        .readingWidth()
         .coordinateSpace(name: "discussion")
         .background {
             GeometryReader { geometry in

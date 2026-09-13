@@ -345,6 +345,45 @@ import XCTest
         attach(app, name: "Audit-18-Large-Text-Comments")
     }
 
+    func testReviewExtraFeeds() {
+        let app = launch()
+        XCTAssertTrue(app.buttons["feed-menu"].waitForExistence(timeout: 5))
+        app.buttons["feed-menu"].tap()
+        app.buttons["More feeds"].tap()
+        attach(app, name: "Review-18-More-Feeds")
+        app.buttons["Best Comments"].tap()
+        XCTAssertTrue(app.buttons["thread-2001"].waitForExistence(timeout: 5))
+        app.buttons["best-comments-period"].tap()
+        app.buttons["Past 24 hours"].tap()
+        XCTAssertTrue(app.staticTexts["Most-upvoted comments of the past 24 hours."].waitForExistence(timeout: 5))
+        attach(app, name: "Review-19-Best-Comments")
+        app.buttons["thread-2001"].tap()
+        XCTAssertTrue(app.buttons["bookmark-story"].waitForExistence(timeout: 5))
+        attach(app, name: "Review-20-Comment-Discussion")
+    }
+
+    func testReviewTimeFilters() {
+        let app = launch()
+        XCTAssertTrue(app.buttons["period-menu"].waitForExistence(timeout: 5))
+        app.buttons["period-menu"].tap()
+        attach(app, name: "Review-14-Time-Menu")
+        app.buttons["Past week"].tap()
+        XCTAssertTrue(app.buttons["story-9401"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["period-menu"].label, "Time period, Past week selected")
+        attach(app, name: "Review-15-Week")
+        app.buttons["period-menu"].tap()
+        app.buttons["Custom dates"].tap()
+        XCTAssertTrue(app.buttons["apply-dates"].waitForExistence(timeout: 5))
+        attach(app, name: "Review-16-Custom-Dates")
+        app.buttons["apply-dates"].tap()
+        XCTAssertEqual(app.buttons["period-menu"].label, "Time period, Custom dates selected")
+        attach(app, name: "Review-17-Custom-Results")
+        app.buttons["period-menu"].tap()
+        app.buttons["Live"].tap()
+        XCTAssertTrue(app.buttons["story-1001"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["story-9401"].exists)
+    }
+
     func testReviewTypography() {
         for theme in ["light", "dark"] {
             let app = launch([theme])
@@ -359,7 +398,7 @@ import XCTest
             size.adjust(toNormalizedSliderPosition: 0.65)
             XCTAssertTrue(preview.isHittable)
             attach(app, name: "Review-02-Comment-Size-\(theme)")
-            app.buttons["Font"].tap()
+            app.buttons["reading-font"].tap()
             app.buttons["Serif"].tap()
             attach(app, name: "Review-03-Comment-Font-\(theme)")
             let controls = app.collectionViews["typography-controls"]
@@ -439,6 +478,12 @@ import XCTest
         app.buttons["Text & spacing"].tap()
         app.segmentedControls.buttons["Comments"].tap()
         XCTAssertTrue(app.staticTexts["typography-preview"].waitForExistence(timeout: 5))
+        let largeSize = app.sliders["adjust-Text size"]
+        let controls = app.collectionViews["typography-controls"]
+        for _ in 0..<4 { if largeSize.isHittable { break }; controls.swipeUp() }
+        XCTAssertTrue(largeSize.isHittable)
+        largeSize.adjust(toNormalizedSliderPosition: 0.5)
+        XCTAssertTrue(app.staticTexts["typography-preview"].isHittable)
         attach(app, name: "Review-12-Large-Text")
         app.terminate()
         let landscape = launch()

@@ -108,6 +108,10 @@ actor MockService: HNService {
         return values[id] ?? HNItem(id: id, type: "story", by: "author", title: "Story \(id)")
     }
     func user(_ name: String) async throws -> HNUser { HNUser(id: name, created: 1, karma: 42) }
+    func listing(_ url: URL) async throws -> HNListingPage { HNListingPage(items: [], next: nil) }
+    func archive(_ feed: Feed, window: ArchiveWindow, page: Int) async throws -> SearchPage {
+        SearchPage(items: [HNItem(id: 9000 + page, type: "story", title: "Archive page \(page)")], page: page, totalPages: 2, totalHits: 2)
+    }
     func search(_ query: String, order: SearchOrder, period: SearchPeriod, page: Int) async throws -> SearchPage {
         if let delay = searchDelays[query] { try await Task.sleep(for: delay) }
         return SearchPage(items: [HNItem(id: query == "new" ? 2 : 1, type: "story", title: query)], page: page, totalPages: 1, totalHits: 1)
@@ -213,6 +217,19 @@ actor MockService: HNService {
         await model.load()
         XCTAssertEqual(model.rows(blocked: []).map(\.id), ["comment-3", "comment-4"])
     }
+    func testArchivePaginationAndReturnToLiveFeed() async {
+        let path = directory(); defer { try? FileManager.default.removeItem(at: path) }
+        let model = FeedModel(service: MockService(), cache: FeedCache(directory: path))
+        await model.load(.top, window: ArchiveWindow(after: 0, before: 100))
+        XCTAssertEqual(model.items.map(\.id), [9000])
+        await model.loadMore()
+        XCTAssertEqual(model.items.map(\.id), [9000, 9001])
+        XCTAssertFalse(model.hasMore)
+        await model.load(.top)
+        XCTAssertEqual(model.items.first?.id, 1)
+        XCTAssertFalse(model.items.contains { $0.id == 9000 })
+    }
+
     func testWholeDiscussionLoadsBeyondFirstPageAndHandlesCycles() async {
         let service = MockService()
         let roots = Array(2...62)

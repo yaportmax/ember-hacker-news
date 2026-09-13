@@ -70,24 +70,32 @@ private struct TypographySettingsView: View {
     }
 
     private var preview: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                Text("Live preview").font(.caption).foregroundStyle(EmberStyle.secondaryText)
-                    .padding(.bottom, 8).accessibilityIdentifier("typography-preview")
-                if editingComments {
-                    previewComment(id: 1, author: "alex", text: "Small details make reading feel effortless. <b>Good typography</b> gives ideas room to breathe.", depth: 0)
-                    Divider()
-                    previewComment(id: 2, author: "riley", text: "And replies stay easy to follow.", depth: 1)
-                        .padding(.leading, replyIndent)
-                } else {
-                    StoryRow(item: HNItem(id: -1, type: "story", title: "The best part of the web is the people who make it", url: "https://example.com", score: 128, descendants: 42), openDiscussion: {}).allowsHitTesting(false)
-                    Divider()
-                    StoryRow(item: HNItem(id: -2, type: "story", title: "Small things, made with care", url: "https://example.com", score: 64, descendants: 12), openDiscussion: {}).allowsHitTesting(false)
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Live preview").font(.caption).dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                .foregroundStyle(EmberStyle.secondaryText)
+                .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 4)
+                .accessibilityIdentifier("typography-preview")
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        if editingComments {
+                            previewComment(id: 1, author: "alex", text: "<b>Good typography</b> gives ideas room to breathe.", depth: 0)
+                            Divider()
+                            previewComment(id: 2, author: "riley", text: "Replies are easy to follow.", depth: 1)
+                                .padding(.leading, replyIndent).id("preview-reply")
+                        } else {
+                            StoryRow(item: HNItem(id: -1, type: "story", title: "The best part of the web is the people who make it", url: "https://example.com", score: 128, descendants: 42), openDiscussion: {}).allowsHitTesting(false)
+                            Divider()
+                            StoryRow(item: HNItem(id: -2, type: "story", title: "Small things, made with care", url: "https://example.com", score: 64, descendants: 12), openDiscussion: {}).allowsHitTesting(false)
+                        }
+                    }.padding(.horizontal, 20).padding(.bottom, 12)
                 }
-            }.padding(.horizontal, 20).padding(.vertical, 12)
-        }
-        .background(EmberStyle.canvas)
-        .accessibilityIdentifier("typography-preview-scroll")
+                .onChange(of: replyIndent) { _, _ in
+                    if editingComments { proxy.scrollTo("preview-reply", anchor: .bottom) }
+                }
+                .accessibilityIdentifier("typography-preview-scroll")
+            }
+        }.background(EmberStyle.canvas)
     }
 
     private func previewComment(id: Int, author: String, text: String, depth: Int) -> some View {
@@ -99,7 +107,7 @@ private struct TypographySettingsView: View {
     private var controls: some View {
         Form {
             if editingComments {
-                Section("Comments & post text") {
+                Section {
                     fontPicker("Font", selection: $commentFont)
                     adjustment("Text size", value: $commentSize, range: 13...28)
                     adjustment("Line spacing", value: $commentLines, range: 0...16)
@@ -107,7 +115,7 @@ private struct TypographySettingsView: View {
                     adjustment("Reply indentation", value: $replyIndent, range: 0...20)
                 }
             } else {
-                Section("Stories") {
+                Section {
                     fontPicker("Font", selection: $storyFont)
                     adjustment("Text size", value: $storySize, range: 13...28)
                     Toggle("Bold titles", isOn: $bold)
@@ -135,7 +143,7 @@ private struct TypographySettingsView: View {
             ForEach(ReadingFont.allCases) { font in
                 Text(font.title).font(.system(.body, design: font.design)).tag(font)
             }
-        }
+        }.accessibilityIdentifier("reading-font")
     }
 
     private func adjustment(_ title: String, value: Binding<Double>, range: ClosedRange<Double>) -> some View {
@@ -249,7 +257,7 @@ struct PrivacyView: View {
                 Text("Bookmarks, reading history, blocked users, hidden stories, and preferences are stored locally. Recent feeds are cached for offline reading. Your device’s backup settings may include local app data. You can remove bookmarks, history, and cached feeds in Settings.")
             }
             Section("Network requests") {
-                Text("Stories, comments, and profiles are requested from the public Hacker News API hosted by Firebase. Searches send your search text to Algolia’s Hacker News search service. These services receive ordinary connection information, including your IP address, under their own privacy policies.")
+                Text("Stories, comments, and profiles are requested from the public Hacker News API hosted by Firebase. Extra feeds come from the Hacker News website. Searches and historical feeds use Algolia’s Hacker News search service; searches send your search text to Algolia. These services receive ordinary connection information, including your IP address, under their own privacy policies.")
             }
             Section("Articles and accounts") {
                 Text("Opening an article contacts that website through Apple’s browser. Websites may use cookies and collect information under their own policies. Sign-in, votes, replies, and submissions happen on Hacker News. Ember does not read your password or browser cookies.")

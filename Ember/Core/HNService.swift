@@ -4,6 +4,8 @@ import FoundationNetworking
 #endif
 
 protocol HNService: Sendable {
+    func listing(_ url: URL) async throws -> HNListingPage
+    func archive(_ feed: Feed, window: ArchiveWindow, page: Int) async throws -> SearchPage
     func feedIDs(_ feed: Feed) async throws -> [Int]
     func item(_ id: Int, fresh: Bool) async throws -> HNItem?
     func user(_ name: String) async throws -> HNUser
@@ -77,6 +79,61 @@ actor HNClient: HNService {
         let url = Self.searchURL(query, order: order, period: period, page: page)
         let response: SearchResponse = try await get(url)
         return response.result
+    }
+
+    func listing(_ url: URL) async throws -> HNListingPage {
+        guard url.scheme == "https", url.host == "news.ycombinator.com" else { throw AppError.invalidLink }
+        let (data, response) = try await session.data(from: url)
+        guard let response = response as? HTTPURLResponse else { throw AppError.invalidResponse }
+        guard (200..<300).contains(response.statusCode) else { throw AppError.status(response.statusCode) }
+        guard data.count < 8_000_000, let html = String(data: data, encoding: .utf8), html.contains("hnmain") else { throw AppError.invalidResponse }
+        let parsed = Self.listingLinks(html, base: url)
+        let fetched = try await items(parsed.ids, fresh: true)
+        return HNListingPage(items: fetched.filter { $0.isVisible && $0.text != "[delayed]" }, next: parsed.next)
+    }
+
+    nonisolated static func listingLinks(_ html: String, base: URL) -> (ids: [Int], next: URL?) {
+        func matches(_ pattern: String, in text: String) -> [String] {
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return [] }
+            let source = text as NSString
+            return regex.matches(in: text, range: NSRange(location: 0, length: source.length)).map { source.substring(with: $0.range(at: 1)) }
+        }
+        let rows = matches("(<tr\\b[^>]*>)", in: html)
+        var seen = Set<Int>()
+        let ids = rows.filter { $0.contains("athing") }.compactMap { row in
+            matches(#"\bid=["']([0-9]+)["']"#, in: row).first.flatMap(Int.init)
+        }.filter { $0 > 0 && seen.insert($0).inserted }
+        let anchor = matches("(<a\\b[^>]*>)", in: html).first { $0.contains("morelink") }
+        let href = anchor.flatMap { matches(#"\bhref=["']([^"']+)["']"#, in: $0).first }
+        let next = href.flatMap { URL(string: $0.replacingOccurrences(of: "&amp;", with: "&"), relativeTo: base)?.absoluteURL }
+        return (ids, next?.host == "news.ycombinator.com" && next?.scheme == "https" ? next : nil)
+    }
+
+    func archive(_ feed: Feed, window: ArchiveWindow, page: Int) async throws -> SearchPage {
+        let response: SearchResponse = try await get(Self.archiveURL(feed, window: window, page: page))
+        var result = response.result
+        if feed == .jobs {
+            result = SearchPage(items: result.items.map { item in var job = item; job.type = "job"; return job },
+                                page: result.page, totalPages: result.totalPages, totalHits: result.totalHits)
+        }
+        return result
+    }
+
+    nonisolated static func archiveURL(_ feed: Feed, window: ArchiveWindow, page: Int) -> URL {
+        let recent = feed == .new || feed == .jobs
+        var components = URLComponents(string: "https://hn.algolia.com/api/v1/\(recent ? "search_by_date" : "search")")!
+        let tag: String
+        switch feed {
+        case .ask: tag = "ask_hn"
+        case .show: tag = "show_hn"
+        case .jobs: tag = "job"
+        default: tag = "story"
+        }
+        components.queryItems = [URLQueryItem(name: "tags", value: tag),
+                                URLQueryItem(name: "page", value: String(max(0, page))),
+                                URLQueryItem(name: "hitsPerPage", value: "50"),
+                                URLQueryItem(name: "numericFilters", value: "created_at_i>=\(Int(window.after)),created_at_i<\(Int(window.before))")]
+        return components.url!
     }
 
     nonisolated static func searchURL(_ query: String, order: SearchOrder, period: SearchPeriod, page: Int, now: Date = Date()) -> URL {
