@@ -2,7 +2,7 @@
 
 A minimal native Hacker News reader for iPhone and iPad. Swift 6, SwiftUI, iOS 17+. No packages, backend, advertisements, or analytics.
 
-**Status:** Private TestFlight **1.0.0 (4.1.0)** is processed by Apple and available to Max's internal group. This update includes historical periods, additional HN feeds, pinned typography previews, and refined comment reading. [Native iPhone/iPad review and screenshots](docs/review/READING-CONTROLS.md) · [Signed build and upload](https://github.com/yaportmax/ember-hacker-news/actions/runs/34743384480) · [TestFlight setup](Release/TESTFLIGHT.md).
+**Status:** Private TestFlight **1.0.0 (5.1.0)** is processed by Apple and available to Max's internal group. This update loads large discussions progressively, keeps scrolling work small, and adds centered 14-point comment defaults with verified live spacing controls. [Native review and screenshots](docs/review/DISCUSSION-PERFORMANCE.md) · [Signed build and upload](https://github.com/yaportmax/ember-hacker-news/actions/runs/34759161548) · [TestFlight setup](Release/TESTFLIGHT.md).
 
 ## Actual app screenshots
 
@@ -12,7 +12,7 @@ Captured from the running native app in GitHub-hosted iPhone and iPad simulators
 | --- | --- |
 | ![iPhone stories in light mode](docs/screenshots/iphone-01-stories-light.png) | ![iPhone stories in dark mode](docs/screenshots/iphone-04-stories-dark.png) |
 
-[Reading controls and feed review](docs/review/READING-CONTROLS.md) · [Earlier iPhone and iPad screenshots](docs/SCREENSHOTS.md) · [Earlier design review](docs/review/AUDIT.md)
+[Large discussion performance review](docs/review/DISCUSSION-PERFORMANCE.md) · [Reading controls and feed review](docs/review/READING-CONTROLS.md) · [Earlier iPhone and iPad screenshots](docs/SCREENSHOTS.md) · [Earlier design review](docs/review/AUDIT.md)
 
 ## Open and run
 
@@ -29,7 +29,7 @@ Max can install the configured build through TestFlight. To run a fork on your o
 - Thirteen additional native HN lists, including Best Comments with a 24-hour, 48-hour, or week window.
 - Pull to refresh, explicit pagination, cached feeds, and retryable errors.
 - Algolia search, relevance/recent sorting, and date filters.
-- Native HTML comments, independent links, full discussion loading, tap-to-collapse threads, and a floating next-comment arrow.
+- Native HTML comments, independent links, progressive discussion loading, tap-to-collapse threads, and a floating next-comment arrow.
 - Independent story/comment fonts, text sizes, and spacing, with a pinned live preview.
 - Poll results, author profiles, blocking, hidden stories, and reporting links.
 - Persistent bookmarks and the last 500 opened stories. Search saved titles and domains.
@@ -98,7 +98,7 @@ The project is checked in and needs no generator to open. After adding/removing 
 
 ## Engineering notes
 
-Networking uses an actor and ephemeral URLSession, up to eight concurrent item requests, 20-second request timeouts, and one retry for transient connection/server failures. Feed batches commit together so a failed request cannot silently skip a story. Generation tokens prevent older search/feed responses from replacing newer state. Comment trees are fetched together and flattened into a lazy scroll stack; indentation is capped without changing parent relationships.
+Networking uses an actor and ephemeral URLSession, up to eight concurrent item requests, 20-second request timeouts, and one retry for transient connection/server failures. Feed batches commit together so a failed request cannot silently skip a story. Generation tokens prevent older search/feed responses from replacing newer state. Discussions load ahead in reading order with coalesced updates. HTML is prepared away from the main actor; scrolling reuses the prepared rows. A session cache reuses up to four recent discussions for two minutes. Indentation is capped without changing parent relationships.
 
 Bookmarks use ordered actor-backed atomic writes. Failed writes surface in the UI. A malformed or future-version archive is preserved and saving is paused until explicit recovery; recovery keeps a separate original copy. Caches are replaceable and cannot block reading live data.
 

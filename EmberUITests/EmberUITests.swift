@@ -765,9 +765,14 @@ import XCTest
             phoneTab.tap()
         } else {
             // iPad's floating top tabs are exposed as cells, not a TabBar.
-            let tabletTab = app.descendants(matching: .any)
-                .matching(NSPredicate(format: "label == %@", name)).firstMatch
-            XCTAssertTrue(tabletTab.waitForExistence(timeout: 5), "Missing tab: \(name)")
+            let tabletTabs = app.descendants(matching: .any)
+                .matching(NSPredicate(format: "label == %@", name))
+            XCTAssertTrue(tabletTabs.firstMatch.waitForExistence(timeout: 5), "Missing tab: \(name)")
+            // iPad can retain an offscreen duplicate after dismissing a popover.
+            guard let tabletTab = tabletTabs.allElementsBoundByIndex.first(where: { $0.isHittable }) else {
+                XCTFail("Missing visible tab: \(name)")
+                return
+            }
             tabletTab.tap()
         }
     }
