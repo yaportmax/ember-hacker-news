@@ -58,8 +58,7 @@ struct DiscussionView: View {
                         .listRowSeparator(.hidden)
                 }
                 ForEach(model.rows(blocked: reading.archive.blockedUsers)) { row in
-                    switch row.kind {
-                    case .comment(let comment):
+                    let comment = row.item
                         CommentView(item: comment, depth: row.depth, collapsed: model.collapsed.contains(comment.id),
                                     isOP: comment.by == model.story.by,
                                     profile: { selectedUsername = comment.by },
@@ -71,23 +70,8 @@ struct DiscussionView: View {
                                         value: [comment.id: geometry.frame(in: .named("discussion"))])
                                 }
                             }
-                            .listRowInsets(EdgeInsets(top: model.collapsed.contains(comment.id) ? 0 : rowSpacing, leading: 20 + indent(row.depth), bottom: model.collapsed.contains(comment.id) ? 0 : rowSpacing, trailing: 20))
-                    case .more(let parent, let remaining):
-                        VStack(alignment: .leading, spacing: 3) {
-                            if let error = model.branchErrors[parent] {
-                                InlineNotice(message: error) { Task { await model.loadChildren(of: parent) } }
-                            } else {
-                                ProgressView().frame(maxWidth: .infinity, alignment: .leading)
-                                    .accessibilityLabel("Loading replies")
-                            }
-                        }
-                        .id(row.id)
-                        .task(id: "\(remaining)-\(model.isLoading)") {
-                            if model.branchErrors[parent] == nil { await model.loadChildren(of: parent) }
-                        }
-                        .listRowInsets(EdgeInsets(top: 4, leading: 20 + indent(row.depth), bottom: 4, trailing: 20))
-                        .listRowSeparator(.hidden)
-                    }
+                            .listRowInsets(EdgeInsets(top: rowSpacing, leading: 20 + indent(row.depth), bottom: model.collapsed.contains(comment.id) ? 0 : rowSpacing, trailing: 20))
+
                 }
             }
         }
@@ -161,10 +145,8 @@ struct DiscussionView: View {
         guard viewportHeight > 0 else { return nil }
         let rows = model.rows(blocked: reading.archive.blockedUsers)
         for (index, row) in rows.enumerated() {
-            guard case .comment(let item) = row.kind,
-                  let frame = commentFrames[item.id],
-                  frame.height > viewportHeight * 0.6,
-                  frame.minY < viewportHeight * 0.5, frame.maxY > viewportHeight * 0.5,
+            guard let frame = commentFrames[row.item.id],
+                  frame.maxY > 12, frame.minY < viewportHeight,
                   index + 1 < rows.count else { continue }
             return rows[index + 1].id
         }
@@ -250,7 +232,7 @@ struct DiscussionView: View {
     }
 }
 
-private struct CommentView: View {
+struct CommentView: View {
     let item: HNItem
     let depth: Int
     let collapsed: Bool

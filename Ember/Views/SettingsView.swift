@@ -45,49 +45,89 @@ private struct TypographySettingsView: View {
     @AppStorage("commentRowSpacing") private var commentRows = 7.0
     @AppStorage("replyIndent") private var replyIndent = 12.0
 
+    @State private var editingComments = false
+
     var body: some View {
-        Form {
-            Section("Preview") {
-                VStack(alignment: .leading, spacing: 0) {
-                    VStack(alignment: .leading, spacing: compact ? 5 : 7) {
-                        Text("The best part of the web is the people who make it")
-                            .modifier(StoryTypography())
-                        if !compact { Text("example.com").font(.caption).foregroundStyle(EmberStyle.secondaryText) }
-                        Text("128 points · 42 comments · 2h").font(.caption).foregroundStyle(EmberStyle.secondaryText)
-                    }.padding(.vertical, compact ? max(0, storyRows - 4) : storyRows)
+        GeometryReader { geometry in
+            VStack(spacing: 0) {
+                Picker("Customize", selection: $editingComments) {
+                    Text("Stories").tag(false)
+                    Text("Comments").tag(true)
+                }.pickerStyle(.segmented).padding(.horizontal, 20).padding(.vertical, 10)
+                if geometry.size.width > geometry.size.height && geometry.size.width > 600 {
+                    HStack(alignment: .top, spacing: 0) {
+                        preview.frame(width: geometry.size.width * 0.45)
+                        controls
+                    }
+                } else {
+                    preview.frame(height: min(280, geometry.size.height * 0.36))
                     Divider()
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("alex · 1h").font(.subheadline).foregroundStyle(EmberStyle.secondaryText)
-                        RichText("Small details make reading feel effortless. <b>Good typography</b> gives every idea room to breathe.")
-                        RichText("And replies stay easy to follow.").padding(.leading, replyIndent)
-                    }.padding(.vertical, commentRows)
+                    controls
                 }
             }
-            Section("Stories") {
-                fontPicker("Font", selection: $storyFont)
-                adjustment("Text size", value: $storySize, range: 13...28)
-                Toggle("Bold titles", isOn: $bold)
-                adjustment("Line spacing", value: $storyLines, range: 0...14)
-                adjustment("Row spacing", value: $storyRows, range: 0...28)
-                Toggle("Compact stories", isOn: $compact)
-            }
-            Section("Comments & post text") {
-                fontPicker("Font", selection: $commentFont)
-                adjustment("Text size", value: $commentSize, range: 13...28)
-                adjustment("Line spacing", value: $commentLines, range: 0...16)
-                adjustment("Row spacing", value: $commentRows, range: 0...24)
-                adjustment("Reply indentation", value: $replyIndent, range: 0...20)
+        }
+        .readingWidth(grouped: true).navigationTitle("Text & spacing").navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var preview: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Live preview").font(.caption).foregroundStyle(EmberStyle.secondaryText)
+                    .padding(.bottom, 8).accessibilityIdentifier("typography-preview")
+                if editingComments {
+                    previewComment(id: 1, author: "alex", text: "Small details make reading feel effortless. <b>Good typography</b> gives ideas room to breathe.", depth: 0)
+                    Divider()
+                    previewComment(id: 2, author: "riley", text: "And replies stay easy to follow.", depth: 1)
+                        .padding(.leading, replyIndent)
+                } else {
+                    StoryRow(item: HNItem(id: -1, type: "story", title: "The best part of the web is the people who make it", url: "https://example.com", score: 128, descendants: 42), openDiscussion: {}).allowsHitTesting(false)
+                    Divider()
+                    StoryRow(item: HNItem(id: -2, type: "story", title: "Small things, made with care", url: "https://example.com", score: 64, descendants: 12), openDiscussion: {}).allowsHitTesting(false)
+                }
+            }.padding(.horizontal, 20).padding(.vertical, 12)
+        }
+        .background(EmberStyle.canvas)
+        .accessibilityIdentifier("typography-preview-scroll")
+    }
+
+    private func previewComment(id: Int, author: String, text: String, depth: Int) -> some View {
+        CommentView(item: HNItem(id: id, type: "comment", by: author, time: Date().timeIntervalSince1970 - 3600, text: text),
+                    depth: depth, collapsed: false, isOP: false, profile: {}, toggle: {}, block: {}, report: {})
+            .padding(.vertical, commentRows).allowsHitTesting(false)
+    }
+
+    private var controls: some View {
+        Form {
+            if editingComments {
+                Section("Comments & post text") {
+                    fontPicker("Font", selection: $commentFont)
+                    adjustment("Text size", value: $commentSize, range: 13...28)
+                    adjustment("Line spacing", value: $commentLines, range: 0...16)
+                    adjustment("Row spacing", value: $commentRows, range: 0...24)
+                    adjustment("Reply indentation", value: $replyIndent, range: 0...20)
+                }
+            } else {
+                Section("Stories") {
+                    fontPicker("Font", selection: $storyFont)
+                    adjustment("Text size", value: $storySize, range: 13...28)
+                    Toggle("Bold titles", isOn: $bold)
+                    adjustment("Line spacing", value: $storyLines, range: 0...14)
+                    adjustment("Row spacing", value: $storyRows, range: 0...28)
+                    Toggle("Compact stories", isOn: $compact)
+                }
             }
             Section {
-                Button("Reset text & spacing") {
-                    storySize = 17; storyFont = .system; storyLines = 2; storyRows = 12
-                    bold = true; compact = false
-                    commentSize = 17; commentFont = .system; commentLines = 5; commentRows = 7; replyIndent = 12
-                }
+                Button(editingComments ? "Reset comment appearance" : "Reset story appearance") {
+                    if editingComments {
+                        commentSize = 17; commentFont = .system; commentLines = 5; commentRows = 7; replyIndent = 12
+                    } else {
+                        storySize = 17; storyFont = .system; storyLines = 2; storyRows = 12; bold = true; compact = false
+                    }
+                }.accessibilityIdentifier("reset-typography")
             } footer: {
-                Text("Changes apply immediately and are saved on this device. Text also scales with your iOS text size. Website articles use the browser’s reading settings.")
+                Text("Saved automatically. Text also follows your iOS text size. Website articles use the browser’s reading settings.")
             }
-        }.readingWidth(grouped: true).navigationTitle("Text & spacing").navigationBarTitleDisplayMode(.inline)
+        }.accessibilityIdentifier("typography-controls")
     }
 
     private func fontPicker(_ title: String, selection: Binding<ReadingFont>) -> some View {
@@ -103,6 +143,7 @@ private struct TypographySettingsView: View {
             HStack { Text(title); Spacer(); Text("\(Int(value.wrappedValue)) pt").foregroundStyle(EmberStyle.secondaryText).monospacedDigit() }
             Slider(value: value, in: range, step: 1).accessibilityLabel(title)
                 .accessibilityValue("\(Int(value.wrappedValue)) points")
+                .accessibilityIdentifier("adjust-\(title)")
         }
     }
 }
@@ -227,7 +268,7 @@ struct SupportView: View {
         List {
             Section("Reading") { Text("Tap a story title to open the article. Tap the comment count beneath it to open the discussion. Swipe right on a story to read it directly.") }
             Section("Saving") { Text("Swipe left on a story, or tap the bookmark in a discussion. Saved stories appear in the Saved tab. Bookmarks preserve the story details and any loaded post text; external articles are not downloaded for offline use.") }
-            Section("Comments") { Text("Tap a comment to collapse or expand its thread. Use the floating down arrow on long comments to jump to the next comment or reply. Replies load automatically as you scroll, in Hacker News order. Long-press a comment to reply on HN, share, report, or block its author.") }
+            Section("Comments") { Text("Tap a comment to collapse or expand its thread. Use the floating down arrow on long comments to jump to the next comment or reply. The full discussion loads when you open it, in Hacker News order. Long-press a comment to reply on HN, share, report, or block its author.") }
             Section("Accounts") { Text("Sign in from Settings to vote, reply, or submit on the Hacker News website. Ember bookmarks are separate from your HN favorites.") }
             Section("Troubleshooting") { Text("Pull down to refresh. If you’re offline, previously loaded feeds and saved story details remain available. Check your connection if new comments or search results cannot load.") }
             if let support = Bundle.main.object(forInfoDictionaryKey: "EmberSupportURL") as? String,

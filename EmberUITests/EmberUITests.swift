@@ -345,6 +345,115 @@ import XCTest
         attach(app, name: "Audit-18-Large-Text-Comments")
     }
 
+    func testReviewTypography() {
+        for theme in ["light", "dark"] {
+            let app = launch([theme])
+            selectTab("Settings", in: app)
+            app.buttons["Text & spacing"].tap()
+            let preview = app.staticTexts["typography-preview"]
+            XCTAssertTrue(preview.waitForExistence(timeout: 5))
+            attach(app, name: "Review-01-Stories-\(theme)")
+            app.segmentedControls.buttons["Comments"].tap()
+            let size = app.sliders["adjust-Text size"]
+            XCTAssertTrue(size.waitForExistence(timeout: 5))
+            size.adjust(toNormalizedSliderPosition: 0.65)
+            XCTAssertTrue(preview.isHittable)
+            attach(app, name: "Review-02-Comment-Size-\(theme)")
+            app.buttons["Font"].tap()
+            app.buttons["Serif"].tap()
+            attach(app, name: "Review-03-Comment-Font-\(theme)")
+            let controls = app.collectionViews["typography-controls"]
+            let indent = app.sliders["adjust-Reply indentation"]
+            for _ in 0..<4 {
+                if indent.isHittable { break }
+                controls.swipeUp()
+            }
+            XCTAssertTrue(indent.isHittable)
+            indent.adjust(toNormalizedSliderPosition: 1)
+            XCTAssertTrue(preview.isHittable, "Preview must remain visible at the last control.")
+            XCTAssertLessThan(preview.frame.maxY, indent.frame.minY)
+            attach(app, name: "Review-04-Scrolled-Controls-\(theme)")
+            let reset = app.buttons["reset-typography"]
+            for _ in 0..<3 { if reset.isHittable { break }; controls.swipeUp() }
+            reset.tap()
+            for _ in 0..<3 { if size.isHittable { break }; controls.swipeDown() }
+            XCTAssertEqual(size.value as? String, "17 points")
+            attach(app, name: "Review-05-Reset-\(theme)")
+            app.terminate()
+        }
+    }
+
+    func testReviewReadingControls() {
+        let app = launch(["dark"])
+        XCTAssertTrue(app.buttons["article-1001"].waitForExistence(timeout: 10))
+        attach(app, name: "Review-06-Home")
+        app.buttons["article-1001"].tap()
+        XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 10))
+        attach(app, name: "Review-07-Direct-Article")
+        app.buttons["Done"].tap()
+        XCTAssertTrue(app.buttons["feed-menu"].waitForExistence(timeout: 5))
+        app.buttons["story-1001"].tap()
+        let text = app.staticTexts["comment-text-2001"]
+        XCTAssertTrue(text.waitForExistence(timeout: 5))
+        let authorY = app.buttons["Profile: alex"].frame.minY
+        text.tap()
+        XCTAssertEqual(app.buttons["Profile: alex"].frame.minY, authorY, accuracy: 1, "Collapsing must keep the author in place.")
+        XCTAssertFalse(text.exists, "Tapping comment text must collapse it.")
+        XCTAssertFalse(app.staticTexts["comment-text-3001"].exists)
+        XCTAssertLessThan(app.buttons["collapse-2001"].frame.height, 60)
+        attach(app, name: "Review-08-Collapsed")
+        app.buttons["collapse-2001"].tap()
+        reveal(app.staticTexts["comment-text-3001"], in: app)
+        XCTAssertTrue(app.staticTexts["comment-text-3001"].isHittable)
+        attach(app, name: "Review-09-Automatic-Replies")
+        app.buttons["Profile: riley"].tap()
+        XCTAssertTrue(app.staticTexts["Karma"].waitForExistence(timeout: 5))
+        app.terminate()
+
+        let long = launch(["--reading-controls", "dark"])
+        XCTAssertTrue(long.buttons["story-9101"].waitForExistence(timeout: 10))
+        long.buttons["story-9101"].tap()
+        XCTAssertTrue(long.buttons["collapse-9201"].waitForExistence(timeout: 5))
+        XCTAssertFalse(long.staticTexts["[delayed]"].exists)
+        let link = long.links["Example link"]
+        if link.waitForExistence(timeout: 5) {
+            reveal(link, in: long); link.tap()
+            XCTAssertTrue(long.buttons["Done"].waitForExistence(timeout: 10))
+            long.buttons["Done"].tap()
+            XCTAssertTrue(long.staticTexts["comment-text-9201"].exists, "Opening a link must not collapse its comment.")
+        } else { XCTFail("Comment link must be independently accessible") }
+        reveal(long.buttons["next-comment"], in: long)
+        attach(long, name: "Review-10-Long-Comment")
+        long.buttons["next-comment"].tap()
+        XCTAssertTrue(long.staticTexts["comment-text-9301"].waitForExistence(timeout: 5))
+        XCTAssertTrue(long.staticTexts["comment-text-9301"].isHittable)
+        attach(long, name: "Review-11-Next-Reply")
+        XCTAssertFalse(long.staticTexts["Comment removed"].exists)
+        long.terminate()
+    }
+
+    func testReviewLargeTextAndLandscape() {
+        let app = launch(["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+        selectTab("Settings", in: app)
+        reveal(app.buttons["Text & spacing"], in: app)
+        app.buttons["Text & spacing"].tap()
+        app.segmentedControls.buttons["Comments"].tap()
+        XCTAssertTrue(app.staticTexts["typography-preview"].waitForExistence(timeout: 5))
+        attach(app, name: "Review-12-Large-Text")
+        app.terminate()
+        let landscape = launch()
+        selectTab("Settings", in: landscape)
+        landscape.buttons["Text & spacing"].tap()
+        landscape.segmentedControls.buttons["Comments"].tap()
+        defer { XCUIDevice.shared.orientation = .portrait }
+        XCUIDevice.shared.orientation = .landscapeLeft
+        let rotated = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in landscape.frame.width > landscape.frame.height }, object: landscape)
+        XCTAssertEqual(XCTWaiter.wait(for: [rotated], timeout: 5), .completed)
+        XCTAssertTrue(landscape.staticTexts["typography-preview"].isHittable)
+        XCTAssertTrue(landscape.sliders["adjust-Text size"].isHittable)
+        attach(landscape, name: "Review-13-Landscape")
+    }
+
     private func setSwitch(_ element: XCUIElement, on: Bool) {
         XCTAssertTrue(element.waitForExistence(timeout: 5))
         let expected = on ? "1" : "0"

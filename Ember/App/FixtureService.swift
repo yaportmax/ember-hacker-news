@@ -20,6 +20,7 @@ struct FixtureService: HNService {
     ]
     func feedIDs(_ feed: Feed) async throws -> [Int] {
         if ProcessInfo.processInfo.arguments.contains("--offline") { throw URLError(.notConnectedToInternet) }
+        if ProcessInfo.processInfo.arguments.contains("--reading-controls") { return [9101] }
         if feed == .ask { return [1004] }
         if feed == .show { return [1003] }
         if feed == .jobs { return [1007] }
@@ -28,6 +29,13 @@ struct FixtureService: HNService {
     }
     func item(_ id: Int, fresh: Bool) async throws -> HNItem? {
         if ProcessInfo.processInfo.arguments.contains("--offline") { throw URLError(.notConnectedToInternet) }
+        if id == 9101 { return HNItem(id: 9101, type: "story", by: "julia", title: "Reading controls review", url: "https://example.com", descendants: 5, kids: [9200, 9201, 9202, 9203]) }
+        if id == 9200 { return HNItem(id: 9200, type: "comment", by: "waiting", text: "[delayed]") }
+        if id == 9201 { return HNItem(id: 9201, type: "comment", by: "alex", text: "<a href=\"https://example.com\">Example link</a><p>" + Array(repeating: "Reading should be calm and predictable. A long comment gives us room to check scrolling, navigation, and the small controls that keep a discussion easy to follow.", count: 18).joined(separator: "<p>"), kids: [9301]) }
+        if id == 9301 { return HNItem(id: 9301, type: "comment", by: "riley", text: "The next reply is now visible.", parent: 9201) }
+        if id == 9202 { return HNItem(id: 9202, type: "comment", kids: [9302], deleted: true) }
+        if id == 9302 { return HNItem(id: 9302, type: "comment", by: "noah", text: "A visible reply survives its removed parent.", parent: 9202) }
+        if id == 9203 { return HNItem(id: 9203, type: "comment", by: "julia", text: "A final top-level comment.") }
         if id == 1007 { return HNItem(id: 1007, type: "job", by: "team", time: 1_789_118_000, title: "Example company is hiring a Swift engineer", url: "https://example.com/jobs") }
         if id == 1008 { return HNItem(id: 1008, type: "poll", by: "julia", time: 1_789_118_000, title: "Poll: When do you read Hacker News?", text: "Choose the time that fits your routine.", score: 42, descendants: 0, parts: [1009, 1010]) }
         if id == 1009 { return HNItem(id: 1009, type: "pollopt", text: "Over morning coffee", score: 28) }

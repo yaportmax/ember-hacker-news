@@ -26,7 +26,11 @@ final class AppContainer {
             if !ProcessInfo.processInfo.arguments.contains("--preserve-state") {
                 for (key, value) in ["selectedFeed": "top", "compactRows": false,
                                      "hideReadStories": false, "dimReadStories": true,
-                                     "externalBrowser": false, "readerMode": true] as [String: Any] {
+                                     "externalBrowser": false, "readerMode": true,
+                                     "storyTextSize": 17.0, "storyFont": "system", "storyLineSpacing": 2.0,
+                                     "storyRowSpacing": 12.0, "boldStoryTitles": true,
+                                     "commentTextSize": 17.0, "commentFont": "system", "commentLineSpacing": 5.0,
+                                     "commentRowSpacing": 7.0, "replyIndent": 12.0] as [String: Any] {
                     defaults.set(value, forKey: key)
                 }
             }

@@ -190,8 +190,6 @@ actor MockService: HNService {
         await service.setItems([story, HNItem(id: 2, type: "comment", by: "alice", text: "Parent", kids: [4]), HNItem(id: 3, type: "comment", by: "bob", text: "Second"), HNItem(id: 4, type: "comment", by: "carol", text: "Child")])
         let model = DiscussionModel(story: story, service: service)
         await model.load()
-        XCTAssertEqual(model.rows(blocked: []).map(\.id), ["comment-2", "more-2", "comment-3"])
-        await model.loadChildren(of: 2)
         XCTAssertEqual(model.rows(blocked: []).map(\.id), ["comment-2", "comment-4", "comment-3"])
         model.toggle(2)
         XCTAssertEqual(model.rows(blocked: []).map(\.id), ["comment-2", "comment-3"])
@@ -203,7 +201,7 @@ actor MockService: HNService {
         let story = HNItem(id: 1, type: "story", kids: [2])
         await service.setItems([story, HNItem(id: 2, type: "comment", kids: [3], deleted: true), HNItem(id: 3, type: "comment", text: "Still here")])
         let model = DiscussionModel(story: story, service: service)
-        await model.load(); await model.loadChildren(of: 2)
+        await model.load()
         XCTAssertEqual(model.rows(blocked: []).map(\.id), ["comment-3"])
         XCTAssertEqual(model.rows(blocked: []).first?.depth, 0)
     }
@@ -214,6 +212,18 @@ actor MockService: HNService {
         let model = DiscussionModel(story: story, service: service)
         await model.load()
         XCTAssertEqual(model.rows(blocked: []).map(\.id), ["comment-3", "comment-4"])
+    }
+    func testWholeDiscussionLoadsBeyondFirstPageAndHandlesCycles() async {
+        let service = MockService()
+        let roots = Array(2...62)
+        let story = HNItem(id: 1, type: "story", kids: roots)
+        await service.setItems([story] + roots.map { HNItem(id: $0, type: "comment", text: "Root", kids: [$0 + 100]) } + roots.map { HNItem(id: $0 + 100, type: "comment", text: "Reply", kids: [1]) })
+        let model = DiscussionModel(story: story, service: service)
+        await model.load()
+        XCTAssertNil(model.error)
+        XCTAssertEqual(model.comments.count, 122)
+        XCTAssertEqual(model.rows(blocked: []).count, 122)
+        XCTAssertEqual(model.rows(blocked: []).suffix(2).map(\.id), ["comment-62", "comment-162"])
     }
     func testAtomicPersistenceAndRapidMutations() async throws {
         let path = directory(); defer { try? FileManager.default.removeItem(at: path) }
