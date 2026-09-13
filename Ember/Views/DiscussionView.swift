@@ -22,7 +22,7 @@ struct DiscussionView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
                 storyHeader.padding(.top, 8).padding(.bottom, 4)
-                if let error = model.error { InlineNotice(message: error) { Task { await reload() } } }
+
                 if !model.story.isVisible {
                     InlineNotice(message: "This story has been removed from Hacker News.", symbol: "text.badge.xmark")
                 } else if let text = model.story.text, !text.isEmpty {
@@ -46,13 +46,13 @@ struct DiscussionView: View {
                         EmptyState(title: "Quiet for now", symbol: "bubble.left.and.bubble.right", detail: "Be the first to join the discussion on Hacker News.")
                     }
                     if !(model.story.kids ?? []).isEmpty, !model.isLoading, model.error == nil,
-                       model.rows(blocked: reading.archive.blockedUsers).isEmpty {
+                       model.rows.isEmpty {
                         EmptyState(title: "Comments are hidden", symbol: "eye.slash", detail: "There are no visible comments right now. Removed comments and blocked users are hidden.")
                     }
-                    ForEach(model.rows(blocked: reading.archive.blockedUsers)) { row in
+                    ForEach(model.rows) { row in
                         let comment = row.item
                         VStack(spacing: 0) {
-                            CommentView(item: comment, depth: row.depth, collapsed: model.collapsed.contains(comment.id),
+                            CommentView(item: comment, runs: row.runs, depth: row.depth, collapsed: model.collapsed.contains(comment.id),
                                         isOP: comment.by == model.story.by,
                                         profile: { selectedUsername = comment.by },
                                         toggle: { model.toggle(comment.id) }, block: { userToBlock = comment.by }, report: { reportItem = comment })
@@ -64,6 +64,14 @@ struct DiscussionView: View {
                         .id(row.id)
                         .anchorPreference(key: CommentAnchorsKey.self, value: .bounds) { [comment.id: $0] }
                     }
+                    if model.error == nil, model.isLoading, !model.rows.isEmpty {
+                        Text("Loading more comments…").font(.caption).foregroundStyle(EmberStyle.secondaryText)
+                            .frame(maxWidth: .infinity).padding(.vertical, 20)
+                            .accessibilityIdentifier("discussion-loading-more")
+                    }
+                }
+                if let error = model.error {
+                    InlineNotice(message: error) { Task { await reload(refresh: true) } }
                 }
             }.padding(.horizontal, 20).padding(.bottom, 72)
         }
@@ -110,19 +118,21 @@ struct DiscussionView: View {
                     Button("Collapse all threads", systemImage: "arrow.up.right.and.arrow.down.left") { model.collapseAll() }
                     Button("Expand all threads", systemImage: "arrow.down.left.and.arrow.up.right") { model.expandAll() }
                     }
-                    Button("Refresh", systemImage: "arrow.clockwise") { Task { await reload() } }
+                    Button("Refresh", systemImage: "arrow.clockwise") { Task { await reload(refresh: true) } }
                     Divider()
                     Button("Report story", systemImage: "flag") { reportItem = model.story }
                 } label: { Image(systemName: "ellipsis") }.accessibilityLabel("Discussion actions")
             }
         }
-        .refreshable { await reload() }
+        .refreshable { await reload(refresh: true) }
         .navigationDestination(item: $reportItem) { item in ReportView(item: item) }
         .navigationDestination(item: $selectedUsername) { name in ProfileView(username: name, service: service) }
         .task {
+            model.setBlockedUsers(reading.archive.blockedUsers)
             reading.record(model.story)
-            await reload()
+            await reload(refresh: false)
         }
+        .onChange(of: reading.archive.blockedUsers) { _, users in model.setBlockedUsers(users) }
         .confirmationDialog("Block \(userToBlock ?? "this user")?", isPresented: Binding(get: { userToBlock != nil }, set: { if !$0 { userToBlock = nil } }), titleVisibility: .visible) {
             Button("Block user", role: .destructive) {
                 if let userToBlock { reading.block(userToBlock) }
@@ -134,17 +144,15 @@ struct DiscussionView: View {
     }
 
     private func nextCommentTarget(anchors: [Int: Anchor<CGRect>], geometry: GeometryProxy) -> String? {
-        let rows = model.rows(blocked: reading.archive.blockedUsers)
+        let rows = model.rows
         guard !rows.isEmpty else { return nil }
         if let last = rows.last, let anchor = anchors[last.item.id],
            geometry[anchor].maxY <= geometry.size.height { return nil }
-        for (index, row) in rows.enumerated() {
-            guard let anchor = anchors[row.item.id] else { continue }
+        let current = anchors.compactMap { id, anchor -> Int? in
             let frame = geometry[anchor]
-            if frame.maxY > 16 && frame.minY < geometry.size.height {
-                return index + 1 < rows.count ? rows[index + 1].id : nil
-            }
-        }
+            return frame.maxY > 16 && frame.minY < geometry.size.height ? model.rowPositions[id] : nil
+        }.min()
+        if let current { return current + 1 < rows.count ? rows[current + 1].id : nil }
         return rows.first?.id
     }
 
@@ -221,14 +229,15 @@ struct DiscussionView: View {
     private func indent(_ depth: Int) -> CGFloat {
         CGFloat(min(depth, typeSize.isAccessibilitySize ? 2 : 5)) * (typeSize.isAccessibilitySize ? min(replyIndent, 6) : replyIndent)
     }
-    private func reload() async {
-        await model.load()
+    private func reload(refresh: Bool) async {
+        await model.load(refresh: refresh, cache: app.discussions)
         if !Task.isCancelled, model.error == nil { reading.record(model.story) }
     }
 }
 
 struct CommentView: View {
     let item: HNItem
+    var runs: [HNHTML.Run]? = nil
     let depth: Int
     let collapsed: Bool
     let isOP: Bool
@@ -259,7 +268,7 @@ struct CommentView: View {
                     .accessibilityIdentifier("collapse-\(item.id)")
             }
             if !collapsed {
-                RichText(item.text ?? "").padding(.bottom, 6).accessibilityIdentifier("comment-text-\(item.id)")
+                RichText(item.text ?? "", runs: runs).padding(.bottom, 6).accessibilityIdentifier("comment-text-\(item.id)")
             }
         }
         .contentShape(Rectangle())

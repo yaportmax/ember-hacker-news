@@ -1,7 +1,7 @@
 name: Visual review
 on:
   push:
-    branches: [design/reading-refinement, review/reading-controls]
+    branches: [design/reading-refinement, review/reading-controls, review/discussion-performance]
   workflow_dispatch:
 permissions:
   contents: read
@@ -31,8 +31,10 @@ jobs:
           phone, tablet = release.choose_devices()
           device = phone if os.environ["AUDIT_DEVICE"] == "iPhone" else tablet
           release.BUILD.mkdir(exist_ok=True)
+          if os.environ["AUDIT_DEVICE"] == "iPhone":
+              release.run(["swift", "test", "-j", "1"])
           release.run(["xcrun", "simctl", "bootstatus", device["udid"], "-b"])
-          release.run(["xcodebuild", "test", "-project", "Ember.xcodeproj", "-scheme", "Ember", "-derivedDataPath", "build/DerivedData", "CODE_SIGNING_ALLOWED=NO", "-destination", f"platform=iOS Simulator,id={device['udid']}", "-parallel-testing-enabled", "NO", "-test-timeouts-enabled", "YES", "-default-test-execution-time-allowance", "180", "-resultBundlePath", "build/Audit.xcresult", "-only-testing:EmberUITests/EmberUITests/testReviewReadingControls"])
+          release.run(["xcodebuild", "test", "-project", "Ember.xcodeproj", "-scheme", "Ember", "-derivedDataPath", "build/DerivedData", "CODE_SIGNING_ALLOWED=NO", "-destination", f"platform=iOS Simulator,id={device['udid']}", "-parallel-testing-enabled", "NO", "-test-timeouts-enabled", "YES", "-default-test-execution-time-allowance", "180", "-resultBundlePath", "build/Audit.xcresult", "-only-testing:EmberUITests/EmberUITests/testReviewReadingControls", "-only-testing:EmberUITests/EmberUITests/testLargeDiscussionResponsiveness"])
           PY
       - name: Export screenshots
         if: always()

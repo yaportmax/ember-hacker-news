@@ -94,15 +94,20 @@ actor MockService: HNService {
     var maximumActive = 0
     var delay: Duration = .milliseconds(1)
     var searchDelays: [String: Duration] = [:]
+    var heldIDs: Set<Int> = []
+    var requestCount = 0
 
+    func hold(_ ids: Set<Int>) { heldIDs = ids }
     func setFailure(_ ids: Set<Int>) { failingIDs = ids }
     func setFeedFailure(_ value: Bool) { feedFailure = value }
     func setItems(_ items: [HNItem], ids: [Int]? = nil) { values = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) }); if let ids { self.ids = ids } }
     func setSearchDelays(_ delays: [String: Duration]) { searchDelays = delays }
     func feedIDs(_ feed: Feed) async throws -> [Int] { if feedFailure { throw URLError(.notConnectedToInternet) }; return ids }
     func item(_ id: Int, fresh: Bool) async throws -> HNItem? {
+        requestCount += 1
         active += 1; maximumActive = max(maximumActive, active)
         defer { active -= 1 }
+        while heldIDs.contains(id) { try await Task.sleep(for: .milliseconds(5)) }
         try await Task.sleep(for: delay)
         if failingIDs.contains(id) { throw URLError(.timedOut) }
         return values[id] ?? HNItem(id: id, type: "story", by: "author", title: "Story \(id)")
@@ -194,11 +199,12 @@ actor MockService: HNService {
         await service.setItems([story, HNItem(id: 2, type: "comment", by: "alice", text: "Parent", kids: [4]), HNItem(id: 3, type: "comment", by: "bob", text: "Second"), HNItem(id: 4, type: "comment", by: "carol", text: "Child")])
         let model = DiscussionModel(story: story, service: service)
         await model.load()
-        XCTAssertEqual(model.rows(blocked: []).map(\.id), ["comment-2", "comment-4", "comment-3"])
+        XCTAssertEqual(model.rows.map(\.id), ["comment-2", "comment-4", "comment-3"])
         model.toggle(2)
-        XCTAssertEqual(model.rows(blocked: []).map(\.id), ["comment-2", "comment-3"])
+        XCTAssertEqual(model.rows.map(\.id), ["comment-2", "comment-3"])
         model.toggle(2)
-        XCTAssertEqual(model.rows(blocked: ["alice"]).map(\.id), ["comment-3"])
+        model.setBlockedUsers(["alice"])
+        XCTAssertEqual(model.rows.map(\.id), ["comment-3"])
     }
     func testDeletedCommentsKeepChildrenReachable() async {
         let service = MockService()
@@ -206,8 +212,8 @@ actor MockService: HNService {
         await service.setItems([story, HNItem(id: 2, type: "comment", kids: [3], deleted: true), HNItem(id: 3, type: "comment", text: "Still here")])
         let model = DiscussionModel(story: story, service: service)
         await model.load()
-        XCTAssertEqual(model.rows(blocked: []).map(\.id), ["comment-3"])
-        XCTAssertEqual(model.rows(blocked: []).first?.depth, 0)
+        XCTAssertEqual(model.rows.map(\.id), ["comment-3"])
+        XCTAssertEqual(model.rows.first?.depth, 0)
     }
     func testDelayedCommentsAreHiddenWithoutReorderingVisibleComments() async {
         let service = MockService()
@@ -215,7 +221,7 @@ actor MockService: HNService {
         await service.setItems([story, HNItem(id: 2, type: "comment", text: "<p>[delayed]</p>"), HNItem(id: 3, type: "comment", text: "First visible"), HNItem(id: 4, type: "comment", text: "Second visible")])
         let model = DiscussionModel(story: story, service: service)
         await model.load()
-        XCTAssertEqual(model.rows(blocked: []).map(\.id), ["comment-3", "comment-4"])
+        XCTAssertEqual(model.rows.map(\.id), ["comment-3", "comment-4"])
     }
     func testArchivePaginationAndReturnToLiveFeed() async {
         let path = directory(); defer { try? FileManager.default.removeItem(at: path) }
@@ -239,9 +245,91 @@ actor MockService: HNService {
         await model.load()
         XCTAssertNil(model.error)
         XCTAssertEqual(model.comments.count, 122)
-        XCTAssertEqual(model.rows(blocked: []).count, 122)
-        XCTAssertEqual(model.rows(blocked: []).suffix(2).map(\.id), ["comment-62", "comment-162"])
+        XCTAssertEqual(model.rows.count, 122)
+        XCTAssertEqual(model.rows.suffix(2).map(\.id), ["comment-62", "comment-162"])
     }
+    func testFirstCommentsAppearBeforeSlowRepliesWithoutReordering() async throws {
+        let service = MockService()
+        let story = HNItem(id: 1, kids: [2, 3])
+        await service.setItems([story, HNItem(id: 2, text: "First", kids: [4]),
+                                HNItem(id: 3, text: "Later root"), HNItem(id: 4, text: "Slow reply")])
+        await service.hold([4])
+        let model = DiscussionModel(story: story, service: service)
+        let task = Task { await model.load() }
+        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
+        while model.rows.isEmpty, ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(5)) }
+        XCTAssertEqual(model.rows.map(\.id), ["comment-2"], "Later roots must wait for the preceding reply, not jump above it.")
+        XCTAssertTrue(model.isLoading)
+        model.toggle(2)
+        await service.hold([])
+        await task.value
+        XCTAssertEqual(model.rows.map(\.id), ["comment-2", "comment-3"], "Background loading must respect a collapse made while loading.")
+        model.toggle(2)
+        XCTAssertEqual(model.rows.map(\.id), ["comment-2", "comment-4", "comment-3"])
+        let maximum = await service.maximumActive
+        XCTAssertLessThanOrEqual(maximum, 8)
+    }
+
+    func testPartialDiscussionSurvivesFailureAndCancellation() async throws {
+        let service = MockService(), cache = DiscussionCache()
+        let story = HNItem(id: 1, kids: [2, 3])
+        await service.setItems([story, HNItem(id: 2, text: "Readable"), HNItem(id: 3, text: "Last")])
+        await service.hold([3]); await service.setFailure([3])
+        let model = DiscussionModel(story: story, service: service)
+        let task = Task { await model.load(cache: cache) }
+        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
+        while model.rows.isEmpty, ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(5)) }
+        await service.hold([]); await task.value
+        XCTAssertEqual(model.rows.map(\.id), ["comment-2"])
+        XCTAssertNotNil(model.error)
+        await service.setFailure([]); await service.hold([3])
+        let retry = Task { await model.load(cache: cache) }
+        while !model.isLoading { await Task.yield() }
+        retry.cancel(); await retry.value
+        XCTAssertFalse(model.isLoading)
+        XCTAssertNil(model.error)
+        XCTAssertEqual(model.rows.map(\.id), ["comment-2"])
+        await service.hold([])
+        await model.load(cache: cache)
+        XCTAssertEqual(model.rows.map(\.id), ["comment-2", "comment-3"])
+    }
+
+    func testDiscussionReopeningUsesPreparedCacheAndRefreshGetsEdits() async {
+        let service = MockService(), cache = DiscussionCache()
+        let story = HNItem(id: 1, kids: [2])
+        await service.setItems([story, HNItem(id: 2, text: "Original")])
+        await DiscussionModel(story: story, service: service).load(cache: cache)
+        let before = await service.requestCount
+        let reopened = DiscussionModel(story: story, service: service)
+        await reopened.load(cache: cache)
+        let after = await service.requestCount
+        XCTAssertEqual(before, after)
+        XCTAssertEqual(reopened.rows.first?.runs.first?.text, "Original")
+        await service.setItems([story, HNItem(id: 2, text: "<b>Edited</b>")])
+        await reopened.load(refresh: true, cache: cache)
+        XCTAssertEqual(reopened.rows.first?.runs.first?.text, "Edited")
+        XCTAssertEqual(reopened.rows.first?.runs.first?.bold, true)
+    }
+
+    func testLargeDiscussionKeepsRowAccessCheap() async {
+        let service = MockService()
+        let ids = Array(2...1201), story = HNItem(id: 1, kids: Array(2...1201))
+        let html = Array(repeating: "A thoughtful comment with <b>emphasis</b>, <i>formatting</i>, and an <a href='https://example.com'>independent link</a>.", count: 6).joined(separator: "<p>")
+        await service.setItems([story] + ids.map { HNItem(id: $0, text: html) })
+        let model = DiscussionModel(story: story, service: service)
+        await model.load()
+        XCTAssertEqual(model.rows.count, 1200)
+        let started = Date()
+        var count = 0
+        for _ in 0..<10_000 { count += model.rows.count }
+        let duration = Date().timeIntervalSince(started)
+        print("PERF: 1200 comments, 10000 visible-row reads: \(duration) seconds")
+        XCTAssertEqual(count, 12_000_000)
+        XCTAssertLessThan(duration, 1, "Scroll-time row reads must not traverse or parse the comment tree.")
+        let maximum = await service.maximumActive
+        XCTAssertLessThanOrEqual(maximum, 8)
+    }
+
     func testAtomicPersistenceAndRapidMutations() async throws {
         let path = directory(); defer { try? FileManager.default.removeItem(at: path) }
         let store = ReadingStore(directory: path)

@@ -54,14 +54,15 @@ struct StoryTypography: ViewModifier {
 
 struct RichText: View {
     private let html: String
+    private let preparedRuns: [HNHTML.Run]?
     @AppStorage("commentTextSize") private var size = 17.0
     @AppStorage("commentFont") private var font = ReadingFont.system
     @AppStorage("commentLineSpacing") private var spacing = 5.0
     @ScaledMetric(relativeTo: .body) private var scale = 1.0
-    init(_ html: String) { self.html = html }
+    init(_ html: String, runs: [HNHTML.Run]? = nil) { self.html = html; self.preparedRuns = runs }
     private var value: AttributedString {
         var output = AttributedString()
-        for run in HNHTML.runs(html) {
+        for run in preparedRuns ?? HNHTML.runs(html) {
             var text = AttributedString(run.text)
             var runFont = Font.system(size: size * scale, design: run.code ? .monospaced : font.design)
             if run.bold { runFont = runFont.bold() }

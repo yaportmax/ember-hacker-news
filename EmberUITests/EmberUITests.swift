@@ -422,6 +422,36 @@ import XCTest
         }
     }
 
+    func testLargeDiscussionResponsiveness() {
+        let app = launch(["--large-discussion", "dark"])
+        XCTAssertTrue(app.buttons["story-9501"].waitForExistence(timeout: 10))
+        app.buttons["story-9501"].tap()
+        XCTAssertTrue(app.buttons["collapse-10000"].waitForExistence(timeout: 5))
+        attach(app, name: "Performance-01-First-Comments")
+        let options = XCTMeasureOptions()
+        options.iterationCount = 3
+        measure(metrics: [XCTOSSignpostMetric.scrollDecelerationMetric], options: options) {
+            app.swipeUp(velocity: .fast)
+        }
+        attach(app, name: "Performance-02-Scrolled-Thread")
+        let next = app.buttons["next-comment"]
+        XCTAssertTrue(next.isHittable)
+        next.tap()
+        XCTAssertTrue(app.buttons["bookmark-story"].isHittable)
+        attach(app, name: "Performance-03-Next-Reply")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.buttons["story-9501"].waitForExistence(timeout: 5))
+        app.buttons["story-9501"].tap()
+        XCTAssertTrue(app.buttons["collapse-10000"].waitForExistence(timeout: 3))
+        let author = app.buttons["Profile: reader10000"]
+        let y = author.frame.minY
+        app.buttons["collapse-10000"].tap()
+        XCTAssertEqual(author.frame.minY, y, accuracy: 1)
+        XCTAssertFalse(app.staticTexts["comment-text-10000"].exists)
+        attach(app, name: "Performance-04-Reopened-Collapsed")
+        app.terminate()
+    }
+
     func testReviewReadingControls() {
         let app = launch(["dark"])
         XCTAssertTrue(app.buttons["article-1001"].waitForExistence(timeout: 10))

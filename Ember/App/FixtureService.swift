@@ -20,6 +20,7 @@ struct FixtureService: HNService {
     ]
     func feedIDs(_ feed: Feed) async throws -> [Int] {
         if ProcessInfo.processInfo.arguments.contains("--offline") { throw URLError(.notConnectedToInternet) }
+        if ProcessInfo.processInfo.arguments.contains("--large-discussion") { return [9501] }
         if ProcessInfo.processInfo.arguments.contains("--reading-controls") { return [9101] }
         if feed == .ask { return [1004] }
         if feed == .show { return [1003] }
@@ -29,6 +30,15 @@ struct FixtureService: HNService {
     }
     func item(_ id: Int, fresh: Bool) async throws -> HNItem? {
         if ProcessInfo.processInfo.arguments.contains("--offline") { throw URLError(.notConnectedToInternet) }
+        if id == 9501 { return HNItem(id: 9501, type: "story", by: "julia", title: "A discussion with 1,200 comments", url: "https://example.com", descendants: 1200, kids: Array(10000...10119)) }
+        if (10000...10119).contains(id) || (20000...21079).contains(id) {
+            try await Task.sleep(for: .milliseconds(25))
+            let root = id < 20000
+            let paragraph = "Reading stays responsive while the rest of this discussion loads. <b>Emphasis</b>, <i>italics</i>, and <a href='https://example.com'>a link</a> remain readable."
+            return HNItem(id: id, type: "comment", by: "reader\(id)", text: "Comment \(id)<p>" + Array(repeating: paragraph, count: root ? 5 : 2).joined(separator: "<p>"),
+                          kids: root ? Array((20000 + (id - 10000) * 9)..<(20000 + (id - 10000) * 9 + 9)) : nil,
+                          parent: root ? 9501 : 10000 + (id - 20000) / 9)
+        }
         if id == 9101 { return HNItem(id: 9101, type: "story", by: "julia", title: "Reading controls review", url: "https://example.com", descendants: 5, kids: [9200, 9201, 9202, 9203]) }
         if id == 9200 { return HNItem(id: 9200, type: "comment", by: "waiting", text: "[delayed]") }
         if id == 9201 { return HNItem(id: 9201, type: "comment", by: "alex", text: "<a href=\"https://example.com\">Example link</a><p>" + Array(repeating: "Reading should be calm and predictable. A long comment gives us room to check scrolling, navigation, and the small controls that keep a discussion easy to follow.", count: 18).joined(separator: "<p>"), kids: [9301]) }

@@ -11,6 +11,7 @@ final class AppContainer {
     let service: any HNService
     let reading: ReadingStore
     let cache: FeedCache
+    let discussions = DiscussionCache()
     var browser: BrowserRoute?
     var error: String?
 
