@@ -1,0 +1,35 @@
+name: Prepare and submit App Store release
+on:
+  push:
+    branches: [release/store-prepare]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: ember-store-submission
+  cancel-in-progress: false
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install 'PyJWT==2.10.1' 'cryptography==46.0.5' 'Pillow==11.3.0'
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: 10323425521
+          run-id: 34774575947
+          path: build/store/iPhone
+          merge-multiple: true
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: 10323023612
+          run-id: 34774575947
+          path: build/store/iPad
+          merge-multiple: true
+          github-token: ${{ github.token }}
+      - name: Complete publisher-approved Apple submission
+        env:
+          EMBER_APPLE_SIGNING: ${{ secrets.EMBER_APPLE_SIGNING }}
+        run: python3 scripts/store_prepare.py
