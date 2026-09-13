@@ -1,0 +1,85 @@
+{
+  "checked_at": "2026-09-13T06:01:22.578134+00:00",
+  "source": "https://news.ycombinator.com/lists",
+  "checks": [
+    {
+      "feed": "bestcomments",
+      "valid_page": true,
+      "items": 30,
+      "more": true
+    },
+    {
+      "feed": "newcomments",
+      "valid_page": true,
+      "items": 30,
+      "more": true
+    },
+    {
+      "feed": "highlights",
+      "valid_page": true,
+      "items": 30,
+      "more": true
+    },
+    {
+      "feed": "active",
+      "valid_page": true,
+      "items": 30,
+      "more": true
+    },
+    {
+      "feed": "asknew",
+      "valid_page": true,
+      "items": 30,
+      "more": true
+    },
+    {
+      "feed": "shownew",
+      "valid_page": true,
+      "items": 30,
+      "more": true
+    },
+    {
+      "feed": "launches",
+      "valid_page": true,
+      "items": 30,
+      "more": true
+    },
+    {
+      "feed": "classic",
+      "valid_page": true,
+      "items": 30,
+      "more": true
+    },
+    {
+      "feed": "pool",
+      "valid_page": true,
+      "items": 30,
+      "more": true
+    },
+    {
+      "feed": "invited",
+      "valid_page": true,
+      "items": 30,
+      "more": true
+    },
+    {
+      "feed": "noobstories",
+      "valid_page": true,
+      "items": 30,
+      "more": true
+    },
+    {
+      "feed": "noobcomments",
+      "valid_page": true,
+      "items": 30,
+      "more": true
+    },
+    {
+      "feed": "whoishiring",
+      "url": "https://news.ycombinator.com/submitted?id=whoishiring",
+      "valid_page": true,
+      "items": 30,
+      "more": true
+    }
+  ]
+}
