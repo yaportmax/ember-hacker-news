@@ -107,6 +107,32 @@ import XCTest
         }
     }
 
+    func testAppStoreScreenshots() {
+        let app = launch()
+        func capture(_ name: String) {
+            Thread.sleep(forTimeInterval: 0.6)
+            let image = XCTAttachment(screenshot: app.screenshot())
+            image.name = "Store-" + name
+            image.lifetime = .keepAlways
+            add(image)
+        }
+        XCTAssertTrue(app.buttons["story-1001"].waitForExistence(timeout: 10))
+        capture("01-Stories")
+        app.buttons["story-1001"].tap()
+        XCTAssertTrue(app.staticTexts["comment-text-2001"].waitForExistence(timeout: 10))
+        capture("02-Discussion")
+        app.buttons["bookmark-story"].tap()
+        selectTab("Saved", in: app)
+        XCTAssertTrue(app.buttons["story-1001"].waitForExistence(timeout: 5))
+        capture("03-Saved")
+        selectTab("Settings", in: app)
+        app.buttons["Text & spacing"].tap()
+        app.segmentedControls.buttons["Comments"].tap()
+        XCTAssertTrue(app.staticTexts["typography-preview"].waitForExistence(timeout: 5))
+        capture("04-Reading-Settings")
+        app.terminate()
+    }
+
     func testCaptureScreenshots() {
         let app = launch()
         XCTAssertTrue(app.buttons["story-1001"].waitForExistence(timeout: 10))

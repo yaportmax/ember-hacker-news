@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run quick core checks, sign once, and upload an internal TestFlight build."""
+"""Check, sign and upload a beta or explicitly requested App Store build."""
 import base64
 import json
 import os
@@ -84,6 +84,12 @@ def main():
     release.static_checks()
     fingerprint = release.fingerprint()
     build_number = os.environ['EMBER_BUILD_NUMBER']
+    distribution = os.environ.get('EMBER_DISTRIBUTION', 'internal')
+    if distribution not in ['internal', 'app-store']:
+        raise SystemExit('Unknown distribution mode.')
+    internal_only = distribution == 'internal'
+    if not internal_only and os.environ.get('GITHUB_REF') != 'refs/heads/release/app-store':
+        raise SystemExit('App Store uploads must use the release/app-store branch.')
     if not re.fullmatch(r'[1-9]\d{0,3}\.\d{1,2}\.\d{1,2}', build_number):
         raise SystemExit('Invalid Apple build number.')
     signing = json.loads(os.environ.pop('EMBER_APPLE_SIGNING'))
@@ -148,7 +154,7 @@ def main():
             archive = release.BUILD/'Ember.xcarchive'
             export = release.BUILD/'TestFlight'
             options = release.BUILD/'TestFlightExport.plist'
-            options.write_bytes(plistlib.dumps({'method':'app-store-connect','destination':'export','teamID':team,'signingStyle':'manual','signingCertificate':'Apple Distribution','provisioningProfiles':{bundle:profile_uuid},'uploadSymbols':True,'manageAppVersionAndBuildNumber':False,'testFlightInternalTestingOnly':True}))
+            options.write_bytes(plistlib.dumps({'method':'app-store-connect','destination':'export','teamID':team,'signingStyle':'manual','signingCertificate':'Apple Distribution','provisioningProfiles':{bundle:profile_uuid},'uploadSymbols':True,'manageAppVersionAndBuildNumber':False,'testFlightInternalTestingOnly':internal_only}))
             release.run(['xcodebuild','archive','-project','Ember.xcodeproj','-scheme','Ember','-configuration','Release','-destination','generic/platform=iOS','-archivePath',archive,'CODE_SIGN_STYLE=Manual','CODE_SIGN_IDENTITY=Apple Distribution',f'PROVISIONING_PROFILE_SPECIFIER={profile_uuid}',f'DEVELOPMENT_TEAM={team}',f'CURRENT_PROJECT_VERSION={build_number}'])
             release.run(['xcodebuild','-exportArchive','-archivePath',archive,'-exportPath',export,'-exportOptionsPlist',options])
             app = archive/'Products/Applications/Ember.app'
@@ -162,9 +168,9 @@ def main():
             release.run(['xcrun','altool','--upload-app','--type','ios','--file',ipas[0],'--apiKey',key_id,'--apiIssuer',signing['issuer_id']])
             if release.fingerprint() != fingerprint:
                 raise RuntimeError('Validated source changed during packaging.')
-            result = {'uploaded_at':datetime.now(timezone.utc).isoformat(),'source_commit':os.environ['EMBER_SOURCE_SHA'],'source_sha256':fingerprint,'workflow_run':os.environ['EMBER_VALIDATION_RUN'],'checks':['static project checks','core and live API tests','signed Release archive'],'ui_tests_run':False,'bundle_id':bundle,'version':info['CFBundleShortVersionString'],'build':build_number,'internal_only':True,'status':'uploaded; Apple processing and tester availability must be verified separately'}
+            result = {'uploaded_at':datetime.now(timezone.utc).isoformat(),'source_commit':os.environ['EMBER_SOURCE_SHA'],'source_sha256':fingerprint,'workflow_run':os.environ['EMBER_VALIDATION_RUN'],'checks':['static project checks','core and live API tests','signed Release archive'],'ui_tests_run':False,'bundle_id':bundle,'version':info['CFBundleShortVersionString'],'build':build_number,'internal_only':internal_only,'status':'uploaded; Apple processing and tester availability must be verified separately'}
             (release.BUILD/'testflight-upload.json').write_text(json.dumps(result,indent=2)+'\n')
-            print('Signed internal-only build uploaded to Apple; checking tester availability.',flush=True)
+            print(f'Signed {distribution} build uploaded to Apple; checking processing.',flush=True)
             result.update(apple_availability(signing, api_path, build_number))
             (release.BUILD/'testflight-upload.json').write_text(json.dumps(result,indent=2)+'\n')
             print(result['status'], flush=True)

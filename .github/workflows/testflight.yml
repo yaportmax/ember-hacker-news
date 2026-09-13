@@ -1,7 +1,7 @@
 name: TestFlight upload
 on:
   push:
-    branches: [main]
+    branches: [main, release/app-store]
     paths-ignore:
       - 'docs/**'
       - 'Release/**'
@@ -14,19 +14,20 @@ concurrency:
   cancel-in-progress: false
 jobs:
   upload:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release/app-store'
     runs-on: macos-26
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Quick checks, signed build, and internal TestFlight upload
+      - name: Quick checks, signed build, and Apple upload
         env:
           EMBER_APPLE_SIGNING: ${{ secrets.EMBER_APPLE_SIGNING }}
           EMBER_BUILD_NUMBER: ${{ github.run_number }}.${{ github.run_attempt }}.0
           EMBER_SOURCE_SHA: ${{ github.sha }}
           EMBER_VALIDATION_RUN: ${{ github.run_id }}
+          EMBER_DISTRIBUTION: ${{ github.ref == 'refs/heads/release/app-store' && 'app-store' || 'internal' }}
         run: python3 scripts/testflight.py
       - uses: actions/upload-artifact@v4
         with:

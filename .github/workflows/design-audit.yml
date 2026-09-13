@@ -1,7 +1,7 @@
 name: Visual review
 on:
   push:
-    branches: [design/reading-refinement, review/reading-controls, review/discussion-performance, review/spacing-settings, review/spacing-captures, review/storage-check]
+    branches: [design/reading-refinement, review/reading-controls, review/discussion-performance, review/spacing-settings, review/spacing-captures, review/storage-check, release/app-store]
   workflow_dispatch:
 permissions:
   contents: read
@@ -32,8 +32,9 @@ jobs:
           device = phone if os.environ["AUDIT_DEVICE"] == "iPhone" else tablet
           release.BUILD.mkdir(exist_ok=True)
           capture_only = os.environ.get("GITHUB_REF_NAME") == "review/spacing-captures"
+          store_captures = os.environ.get("GITHUB_REF_NAME") == "release/app-store"
           storage_only = os.environ.get("GITHUB_REF_NAME") == "review/storage-check"
-          if os.environ["AUDIT_DEVICE"] == "iPhone" and not capture_only and not storage_only:
+          if os.environ["AUDIT_DEVICE"] == "iPhone" and not capture_only and not storage_only and not store_captures:
               release.run(["swift", "test", "-j", "1"])
           release.run(["xcrun", "simctl", "bootstatus", device["udid"], "-b"])
           tests = ["testCommentSpacingAffectsPreviewAndReading", "testStorySpacingAndPreferencePersistence", "testReviewLargeTextAndLandscape"]
@@ -43,6 +44,9 @@ jobs:
               tests = ["testSettledTypographyScreens"]
           if storage_only:
               tests = ["testStorageConfirmationKeepsBookmarks"]
+          if store_captures:
+              release.run(["xcrun", "simctl", "status_bar", device["udid"], "override", "--time", "9:41", "--dataNetwork", "wifi", "--wifiMode", "active", "--wifiBars", "3", "--batteryState", "charged", "--batteryLevel", "100"])
+              tests = ["testAppStoreScreenshots"]
           release.run(["xcodebuild", "test", "-project", "Ember.xcodeproj", "-scheme", "Ember", "-derivedDataPath", "build/DerivedData", "CODE_SIGNING_ALLOWED=NO", "-destination", f"platform=iOS Simulator,id={device['udid']}", "-parallel-testing-enabled", "NO", "-test-timeouts-enabled", "YES", "-default-test-execution-time-allowance", "300", "-resultBundlePath", "build/Audit.xcresult", *["-only-testing:EmberUITests/EmberUITests/" + name for name in tests]])
           PY
       - name: Export screenshots
