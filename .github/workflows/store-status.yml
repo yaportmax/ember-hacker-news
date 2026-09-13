@@ -1,0 +1,17 @@
+name: App Store status
+on:
+  push:
+    branches: [release/store-status]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install 'PyJWT==2.10.1' 'cryptography==46.0.5'
+      - name: Inspect Ember release only
+        env:
+          EMBER_APPLE_SIGNING: ${{ secrets.EMBER_APPLE_SIGNING }}
+        run: python3 scripts/store_status.py
