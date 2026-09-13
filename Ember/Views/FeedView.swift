@@ -6,16 +6,16 @@ struct FeedView: View {
     @AppStorage("hideReadStories") private var hideRead = false
     @Environment(ReadingStore.self) private var reading
 
-    init(service: any HNService, cache: FeedCache) { _model = State(initialValue: FeedModel(service: service, cache: cache)) }
+    let openDiscussion: (HNItem) -> Void
+    init(service: any HNService, cache: FeedCache, openDiscussion: @escaping (HNItem) -> Void) {
+        _model = State(initialValue: FeedModel(service: service, cache: cache))
+        self.openDiscussion = openDiscussion
+    }
     private var feed: Feed { Feed(rawValue: selectedFeed) ?? .top }
     private var visible: [HNItem] { model.items.filter { !reading.isHidden($0) && !(hideRead && reading.isRead($0.id)) } }
 
     var body: some View {
         List {
-            if model.isCached, let updated = model.updatedAt {
-                Label("Saved feed · \(updated.formatted(date: .abbreviated, time: .shortened))", systemImage: "clock.arrow.circlepath")
-                    .font(.caption).foregroundStyle(EmberStyle.secondaryText).listRowSeparator(.hidden)
-            }
             if let error = model.error { InlineNotice(message: error) { Task { await model.refresh() } }.listRowSeparator(.hidden) }
             if model.isLoading, model.items.isEmpty {
                 HStack { Spacer(); ProgressView("Loading stories…"); Spacer() }.padding(.vertical, 60).listRowSeparator(.hidden)
@@ -25,10 +25,7 @@ struct FeedView: View {
                     .listRowSeparator(.hidden)
             }
             ForEach(visible) { item in
-                NavigationLink(value: item) {
-                    StoryRow(item: item)
-                }
-                .accessibilityIdentifier("story-\(item.id)")
+                StoryRow(item: item, openDiscussion: { openDiscussion(item) })
                 .storyActions(item)
             }
             if model.hasMore {

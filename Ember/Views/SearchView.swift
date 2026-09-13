@@ -3,7 +3,11 @@ import SwiftUI
 struct SearchView: View {
     @State private var model: SearchModel
     @Environment(ReadingStore.self) private var reading
-    init(service: any HNService) { _model = State(initialValue: SearchModel(service: service)) }
+    let openDiscussion: (HNItem) -> Void
+    init(service: any HNService, openDiscussion: @escaping (HNItem) -> Void) {
+        _model = State(initialValue: SearchModel(service: service))
+        self.openDiscussion = openDiscussion
+    }
 
     private var visible: [HNItem] { model.items.filter { !reading.isHidden($0) } }
 
@@ -43,7 +47,7 @@ struct SearchView: View {
                     EmptyState(title: "Results are hidden", symbol: "eye.slash", detail: "Review Hidden content in Settings to show matching stories.").listRowSeparator(.hidden)
                 }
                 ForEach(visible) { item in
-                    NavigationLink(value: item) { StoryRow(item: item) }.accessibilityIdentifier("story-\(item.id)").storyActions(item)
+                    StoryRow(item: item, openDiscussion: { openDiscussion(item) }).storyActions(item)
                 }
                 if model.hasMore { PageButton(loading: model.isLoadingMore) { Task { await model.loadMore() } }.listRowSeparator(.hidden) }
             }

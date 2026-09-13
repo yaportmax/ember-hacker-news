@@ -24,23 +24,56 @@ struct SafariView: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
 }
 
+enum ReadingFont: String, CaseIterable, Identifiable {
+    case system, serif, rounded, monospaced
+    var id: String { rawValue }
+    var title: String { rawValue.capitalized }
+    var design: Font.Design {
+        switch self {
+        case .system: .default
+        case .serif: .serif
+        case .rounded: .rounded
+        case .monospaced: .monospaced
+        }
+    }
+}
+
+struct StoryTypography: ViewModifier {
+    var heading = false
+    @AppStorage("storyTextSize") private var size = 17.0
+    @AppStorage("storyFont") private var font = ReadingFont.system
+    @AppStorage("storyLineSpacing") private var spacing = 2.0
+    @AppStorage("boldStoryTitles") private var bold = true
+    @ScaledMetric(relativeTo: .body) private var scale = 1.0
+    func body(content: Content) -> some View {
+        content.font(.system(size: (size + (heading ? 5 : 0)) * scale,
+                             weight: bold ? (heading ? .bold : .semibold) : .regular, design: font.design))
+            .lineSpacing(spacing * scale)
+    }
+}
+
 struct RichText: View {
-    private let value: AttributedString
-    init(_ html: String) {
+    private let html: String
+    @AppStorage("commentTextSize") private var size = 17.0
+    @AppStorage("commentFont") private var font = ReadingFont.system
+    @AppStorage("commentLineSpacing") private var spacing = 5.0
+    @ScaledMetric(relativeTo: .body) private var scale = 1.0
+    init(_ html: String) { self.html = html }
+    private var value: AttributedString {
         var output = AttributedString()
         for run in HNHTML.runs(html) {
             var text = AttributedString(run.text)
-            var font = run.code ? Font.system(.body, design: .monospaced) : Font.body
-            if run.bold { font = font.bold() }
-            if run.italic { font = font.italic() }
-            text.font = font
+            var runFont = Font.system(size: size * scale, design: run.code ? .monospaced : font.design)
+            if run.bold { runFont = runFont.bold() }
+            if run.italic { runFont = runFont.italic() }
+            text.font = runFont
             if let url = run.link { text.link = url }
             output.append(text)
         }
-        value = output
+        return output
     }
     var body: some View {
-        Text(value).lineSpacing(5).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+        Text(value).lineSpacing(spacing * scale).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -113,44 +146,54 @@ struct RelativeTime: View {
 
 struct StoryRow: View {
     let item: HNItem
+    let openDiscussion: () -> Void
     @Environment(ReadingStore.self) private var reading
+    @Environment(AppContainer.self) private var app
     @Environment(\.dynamicTypeSize) private var typeSize
     @AppStorage("compactRows") private var compact = false
     @AppStorage("dimReadStories") private var dimRead = true
+    @AppStorage("storyRowSpacing") private var rowSpacing = 12.0
 
     var body: some View {
-        VStack(alignment: .leading, spacing: compact ? 5 : 7) {
-            Text(item.displayTitle)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(dimRead && reading.isRead(item.id) ? EmberStyle.secondaryText : .primary)
-                .fixedSize(horizontal: false, vertical: true)
-                .lineSpacing(2)
-            if !compact, let domain = item.domain {
-                Text(domain).font(.caption).foregroundStyle(EmberStyle.secondaryText)
-                    .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
+        VStack(alignment: .leading, spacing: compact ? 0 : 3) {
+            Button {
+                if let url = item.articleURL { reading.record(item); app.open(url) }
+                else { openDiscussion() }
+            } label: {
+                VStack(alignment: .leading, spacing: compact ? 5 : 7) {
+                    Text(item.displayTitle).modifier(StoryTypography())
+                        .foregroundStyle(dimRead && reading.isRead(item.id) ? EmberStyle.secondaryText : .primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if !compact, let domain = item.domain {
+                        Text(domain).font(.caption).foregroundStyle(EmberStyle.secondaryText)
+                            .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
+                    }
+                }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
             }
-            if typeSize.isAccessibilitySize {
-                VStack(alignment: .leading, spacing: 4) { statistics; timeAndBookmark }
-            } else {
-                HStack(spacing: 8) { statistics; separator; timeAndBookmark }
+            .buttonStyle(.plain).accessibilityIdentifier("article-\(item.id)")
+            .accessibilityHint(item.articleURL == nil ? "Opens discussion" : "Opens article")
+            Button(action: openDiscussion) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) { statistics; MetadataSeparator(); timeAndBookmark }
+                    VStack(alignment: .leading, spacing: 4) { statistics; timeAndBookmark }
+                }
+                .font(.caption).foregroundStyle(EmberStyle.secondaryText)
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
             }
+            .buttonStyle(.plain).accessibilityIdentifier("story-\(item.id)")
+            .accessibilityLabel("\(item.commentCount) comments on \(item.displayTitle)")
+            .accessibilityHint("Opens discussion")
         }
-        .font(.caption).foregroundStyle(EmberStyle.secondaryText)
-        .padding(.vertical, compact ? 8 : 12)
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-        .accessibilityHint("Opens discussion")
+        .padding(.vertical, compact ? max(0, rowSpacing - 4) : rowSpacing)
     }
 
     @ViewBuilder private var statistics: some View {
-        if item.type == "job" { Text("Job") }
+        if item.type == "job" { Text("Job details") }
         else {
-            // Text can wrap at accessibility sizes; icons do not imply voting.
             Text("\(max(0, item.score ?? 0).formatted()) points · \(item.commentCount.formatted()) \(item.commentCount == 1 ? "comment" : "comments")")
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
-    private var separator: some View { MetadataSeparator() }
     private var timeAndBookmark: some View {
         HStack(spacing: 8) {
             RelativeTime(date: item.date).fixedSize()

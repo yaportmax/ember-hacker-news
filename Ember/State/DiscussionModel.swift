@@ -50,7 +50,7 @@ final class DiscussionModel {
     }
 
     func expandAll() { collapsed = [] }
-    func collapseAll() { collapsed = Set(story.kids ?? []) }
+    func collapseAll() { collapsed = Set(comments.keys) }
 
     func loadChildren(of parent: Int) async {
         guard !loadingParents.contains(parent), !isLoading else { return }
@@ -62,7 +62,7 @@ final class DiscussionModel {
         loadingParents.insert(parent); branchErrors.removeValue(forKey: parent)
         defer { if generation == request { loadingParents.remove(parent) } }
         do {
-            let fetched = try await service.items(batch)
+            let fetched = try await service.items(batch, fresh: true)
             try Task.checkCancellation()
             guard generation == request else { return }
             for item in fetched { comments[item.id] = item }
@@ -84,8 +84,12 @@ final class DiscussionModel {
             for id in kids.prefix(loadedCount) {
                 guard visited.insert(id).inserted, let item = comments[id] else { continue }
                 if let by = item.by, blocked.contains(by) { continue }
-                rows.append(CommentRow(id: "comment-\(id)", depth: depth, kind: .comment(item)))
-                if !collapsed.contains(id) { appendChildren(id, kids: item.kids ?? [], depth: depth + 1) }
+                let text = HNHTML.plainText(item.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                let visible = item.isVisible && !text.isEmpty && text != "[delayed]"
+                if visible { rows.append(CommentRow(id: "comment-\(id)", depth: depth, kind: .comment(item))) }
+                if !visible || !collapsed.contains(id) {
+                    appendChildren(id, kids: item.kids ?? [], depth: depth + (visible ? 1 : 0))
+                }
             }
             if loadedCount < kids.count {
                 rows.append(CommentRow(id: "more-\(parent)", depth: depth,

@@ -47,10 +47,9 @@ import XCTest
         XCTAssertTrue(app.buttons["collapse-2001"].waitForExistence(timeout: 5))
         app.buttons["collapse-2001"].tap()
         XCTAssertEqual(app.buttons["collapse-2001"].label, "Expand comment by alex")
+        XCTAssertFalse(app.staticTexts["comment-text-2001"].exists)
+        XCTAssertFalse(app.staticTexts["comment-text-3001"].exists)
         app.buttons["collapse-2001"].tap()
-        let replies = app.buttons["replies-2001"]
-        if !replies.isHittable { app.swipeUp() }
-        replies.tap()
         XCTAssertTrue(app.staticTexts["comment-text-3001"].waitForExistence(timeout: 5))
     }
 
@@ -205,8 +204,6 @@ import XCTest
         XCTAssertTrue(discussion.staticTexts["Karma"].waitForExistence(timeout: 5))
         attach(discussion, name: "Audit-23-Profile")
         discussion.navigationBars.buttons.element(boundBy: 0).tap()
-        let replies = discussion.buttons["replies-2001"]
-        reveal(replies, in: discussion); replies.tap()
         XCTAssertTrue(discussion.staticTexts["comment-text-3001"].waitForExistence(timeout: 5))
         attach(discussion, name: "Audit-14-Replies")
         discussion.terminate()

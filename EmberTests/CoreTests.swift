@@ -204,7 +204,16 @@ actor MockService: HNService {
         await service.setItems([story, HNItem(id: 2, type: "comment", kids: [3], deleted: true), HNItem(id: 3, type: "comment", text: "Still here")])
         let model = DiscussionModel(story: story, service: service)
         await model.load(); await model.loadChildren(of: 2)
-        XCTAssertEqual(model.rows(blocked: []).map(\.id), ["comment-2", "comment-3"])
+        XCTAssertEqual(model.rows(blocked: []).map(\.id), ["comment-3"])
+        XCTAssertEqual(model.rows(blocked: []).first?.depth, 0)
+    }
+    func testDelayedCommentsAreHiddenWithoutReorderingVisibleComments() async {
+        let service = MockService()
+        let story = HNItem(id: 1, type: "story", kids: [2, 3, 4])
+        await service.setItems([story, HNItem(id: 2, type: "comment", text: "<p>[delayed]</p>"), HNItem(id: 3, type: "comment", text: "First visible"), HNItem(id: 4, type: "comment", text: "Second visible")])
+        let model = DiscussionModel(story: story, service: service)
+        await model.load()
+        XCTAssertEqual(model.rows(blocked: []).map(\.id), ["comment-3", "comment-4"])
     }
     func testAtomicPersistenceAndRapidMutations() async throws {
         let path = directory(); defer { try? FileManager.default.removeItem(at: path) }

@@ -16,15 +16,15 @@ struct RootView: View {
         @Bindable var app = app
         TabView(selection: $selectedTab) {
             NavigationStack(path: $storyPath) {
-                FeedView(service: app.service, cache: app.cache)
+                FeedView(service: app.service, cache: app.cache, openDiscussion: { storyPath.append($0) })
                     .navigationDestination(for: HNItem.self) { item in DiscussionView(story: item, service: app.service) }
             }.tabItem { Label("Stories", systemImage: "text.alignleft") }.tag(Tab.stories)
             NavigationStack(path: $searchPath) {
-                SearchView(service: app.service)
+                SearchView(service: app.service, openDiscussion: { searchPath.append($0) })
                     .navigationDestination(for: HNItem.self) { item in DiscussionView(story: item, service: app.service) }
             }.tabItem { Label("Search", systemImage: "magnifyingglass") }.tag(Tab.search)
             NavigationStack(path: $savedPath) {
-                SavedView()
+                SavedView(openDiscussion: { savedPath.append($0) })
                     .navigationDestination(for: HNItem.self) { item in DiscussionView(story: item, service: app.service) }
             }.tabItem { Label("Saved", systemImage: "bookmark") }.tag(Tab.saved)
             NavigationStack { SettingsView() }

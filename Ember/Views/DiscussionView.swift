@@ -1,6 +1,10 @@
 import SwiftUI
 
 struct DiscussionView: View {
+    @AppStorage("commentRowSpacing") private var rowSpacing = 7.0
+    @AppStorage("replyIndent") private var replyIndent = 12.0
+    @State private var commentFrames: [Int: CGRect] = [:]
+    @State private var viewportHeight: CGFloat = 0
     @State private var model: DiscussionModel
     @State private var userToBlock: String?
     @State private var reportItem: HNItem?
@@ -16,6 +20,7 @@ struct DiscussionView: View {
     }
 
     var body: some View {
+        ScrollViewReader { proxy in
         List {
             storyHeader.listRowSeparator(.hidden)
                 .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 4, trailing: 20))
@@ -49,7 +54,7 @@ struct DiscussionView: View {
                 }
                 if !(model.story.kids ?? []).isEmpty, !model.isLoading, model.error == nil,
                    model.rows(blocked: reading.archive.blockedUsers).isEmpty {
-                    EmptyState(title: "Comments are hidden", symbol: "eye.slash", detail: "Review blocked users in Settings to show these comments.")
+                    EmptyState(title: "Comments are hidden", symbol: "eye.slash", detail: "There are no visible comments right now. Removed comments and blocked users are hidden.")
                         .listRowSeparator(.hidden)
                 }
                 ForEach(model.rows(blocked: reading.archive.blockedUsers)) { row in
@@ -59,13 +64,26 @@ struct DiscussionView: View {
                                     isOP: comment.by == model.story.by,
                                     profile: { selectedUsername = comment.by },
                                     toggle: { model.toggle(comment.id) }, block: { userToBlock = comment.by }, report: { reportItem = comment })
-                            .listRowInsets(EdgeInsets(top: 7, leading: 20 + indent(row.depth), bottom: 7, trailing: 20))
+                            .id(row.id)
+                            .background {
+                                GeometryReader { geometry in
+                                    Color.clear.preference(key: CommentFramesKey.self,
+                                        value: [comment.id: geometry.frame(in: .named("discussion"))])
+                                }
+                            }
+                            .listRowInsets(EdgeInsets(top: model.collapsed.contains(comment.id) ? 0 : rowSpacing, leading: 20 + indent(row.depth), bottom: model.collapsed.contains(comment.id) ? 0 : rowSpacing, trailing: 20))
                     case .more(let parent, let remaining):
                         VStack(alignment: .leading, spacing: 3) {
-                            if let error = model.branchErrors[parent] { Text(error).font(.caption).foregroundStyle(EmberStyle.secondaryText) }
-                            PageButton(title: model.branchErrors[parent] == nil ? "\(parent == model.story.id ? "More comments" : "Show replies") (\(remaining))" : "Retry loading replies",
-                                       loading: model.loadingParents.contains(parent), alignment: .leading) { Task { await model.loadChildren(of: parent) } }
-                                .accessibilityIdentifier("replies-\(parent)")
+                            if let error = model.branchErrors[parent] {
+                                InlineNotice(message: error) { Task { await model.loadChildren(of: parent) } }
+                            } else {
+                                ProgressView().frame(maxWidth: .infinity, alignment: .leading)
+                                    .accessibilityLabel("Loading replies")
+                            }
+                        }
+                        .id(row.id)
+                        .task(id: "\(remaining)-\(model.isLoading)") {
+                            if model.branchErrors[parent] == nil { await model.loadChildren(of: parent) }
                         }
                         .listRowInsets(EdgeInsets(top: 4, leading: 20 + indent(row.depth), bottom: 4, trailing: 20))
                         .listRowSeparator(.hidden)
@@ -74,6 +92,28 @@ struct DiscussionView: View {
             }
         }
         .listStyle(.plain).readingWidth()
+        .coordinateSpace(name: "discussion")
+        .background {
+            GeometryReader { geometry in
+                Color.clear.preference(key: DiscussionHeightKey.self, value: geometry.size.height)
+            }
+        }
+        .onPreferenceChange(CommentFramesKey.self) { commentFrames = $0 }
+        .onPreferenceChange(DiscussionHeightKey.self) { viewportHeight = $0 }
+        .overlay(alignment: .bottomTrailing) {
+            if let target = nextCommentTarget {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { proxy.scrollTo(target, anchor: .top) }
+                } label: {
+                    Image(systemName: "arrow.down").font(.body.weight(.semibold))
+                        .frame(width: 44, height: 44).background(.regularMaterial, in: Circle())
+                        .overlay(Circle().strokeBorder(.primary.opacity(0.08)))
+                }
+                .buttonStyle(.plain).padding(16)
+                .accessibilityLabel("Next comment or reply")
+                .accessibilityIdentifier("next-comment")
+            }
+        }
         .navigationTitle(model.story.type == "job" ? "Job" : "Discussion").navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
@@ -92,7 +132,7 @@ struct DiscussionView: View {
                     Divider()
                     if !(model.story.kids ?? []).isEmpty {
                     Button("Collapse all threads", systemImage: "arrow.up.right.and.arrow.down.left") { model.collapseAll() }
-                    Button("Expand loaded threads", systemImage: "arrow.down.left.and.arrow.up.right") { model.expandAll() }
+                    Button("Expand all threads", systemImage: "arrow.down.left.and.arrow.up.right") { model.expandAll() }
                     }
                     Button("Refresh", systemImage: "arrow.clockwise") { Task { await reload() } }
                     Divider()
@@ -113,6 +153,22 @@ struct DiscussionView: View {
                 userToBlock = nil
             }
         } message: { Text("Their stories and comments will be hidden on this device. You can unblock them in Settings.") }
+    }
+
+    }
+
+    private var nextCommentTarget: String? {
+        guard viewportHeight > 0 else { return nil }
+        let rows = model.rows(blocked: reading.archive.blockedUsers)
+        for (index, row) in rows.enumerated() {
+            guard case .comment(let item) = row.kind,
+                  let frame = commentFrames[item.id],
+                  frame.height > viewportHeight * 0.6,
+                  frame.minY < viewportHeight * 0.5, frame.maxY > viewportHeight * 0.5,
+                  index + 1 < rows.count else { continue }
+            return rows[index + 1].id
+        }
+        return nil
     }
 
     private var storyHeader: some View {
@@ -156,7 +212,7 @@ struct DiscussionView: View {
     }
 
     private var storyTitle: some View {
-        Text(model.story.displayTitle).font(.title2.weight(.bold)).lineSpacing(2)
+        Text(model.story.displayTitle).modifier(StoryTypography(heading: true))
             .foregroundStyle(.primary).multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityAddTraits(.isHeader)
@@ -186,7 +242,7 @@ struct DiscussionView: View {
         app.open(model.story.articleURL ?? model.story.discussionURL)
     }
     private func indent(_ depth: Int) -> CGFloat {
-        CGFloat(min(depth, typeSize.isAccessibilitySize ? 2 : 5)) * (typeSize.isAccessibilitySize ? 6 : 12)
+        CGFloat(min(depth, typeSize.isAccessibilitySize ? 2 : 5)) * (typeSize.isAccessibilitySize ? min(replyIndent, 6) : replyIndent)
     }
     private func reload() async {
         await model.load()
@@ -225,16 +281,13 @@ private struct CommentView: View {
                     .accessibilityLabel(collapsed ? "Expand comment by \(item.by ?? "deleted user")" : "Collapse comment by \(item.by ?? "deleted user")")
                     .accessibilityIdentifier("collapse-\(item.id)")
             }
-            if collapsed {
-                Text(item.isVisible ? HNHTML.plainText(item.text ?? "") : "Comment removed")
-                    .font(.subheadline).foregroundStyle(EmberStyle.secondaryText).lineLimit(1)
-                if let kids = item.kids, !kids.isEmpty { Text("\(kids.count) replies hidden").font(.caption).foregroundStyle(EmberStyle.secondaryText) }
-            } else if item.isVisible {
+            if !collapsed {
                 RichText(item.text ?? "").padding(.bottom, 6).accessibilityIdentifier("comment-text-\(item.id)")
-            } else {
-                Text("Comment removed").font(.subheadline).italic().foregroundStyle(EmberStyle.secondaryText).padding(.bottom, 12)
             }
         }
+        .contentShape(Rectangle())
+        .onTapGesture(perform: toggle)
+        .accessibilityAction(named: collapsed ? "Expand thread" : "Collapse thread", toggle)
         .padding(.leading, depth > 0 ? 10 : 0)
         .overlay(alignment: .leading) {
             if depth > 0 { Rectangle().fill(Color.accentColor.opacity(0.25)).frame(width: 1).padding(.vertical, 10).accessibilityHidden(true) }
@@ -247,4 +300,16 @@ private struct CommentView: View {
             if item.by != nil { Button("Block user", systemImage: "person.slash", role: .destructive, action: block) }
         }
     }
+}
+
+private struct CommentFramesKey: PreferenceKey {
+    static let defaultValue: [Int: CGRect] = [:]
+    static func reduce(value: inout [Int: CGRect], nextValue: () -> [Int: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, new in new })
+    }
+}
+
+private struct DiscussionHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SavedView: View {
+    let openDiscussion: (HNItem) -> Void
     @Environment(ReadingStore.self) private var reading
     @State private var showHistory = false
     @State private var query = ""
@@ -25,7 +26,7 @@ struct SavedView: View {
                     .listRowSeparator(.hidden)
             }
             ForEach(stories) { saved in
-                NavigationLink(value: saved.item) { StoryRow(item: saved.item) }.accessibilityIdentifier("story-\(saved.id)").storyActions(saved.item)
+                StoryRow(item: saved.item, openDiscussion: { openDiscussion(saved.item) }).storyActions(saved.item)
             }
         }
         .listStyle(.plain).readingWidth()
