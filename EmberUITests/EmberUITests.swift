@@ -53,6 +53,23 @@ import XCTest
         XCTAssertTrue(app.staticTexts["comment-text-3001"].waitForExistence(timeout: 5))
     }
 
+    func testCommentHNLinkOffersNativeDiscussionAndBrowser() {
+        let app = launch(["--reading-controls"])
+        XCTAssertTrue(app.buttons["story-9101"].waitForExistence(timeout: 10))
+        app.buttons["story-9101"].tap()
+        let link = app.links["Related discussion"]
+        XCTAssertTrue(link.waitForExistence(timeout: 5))
+        link.tap()
+        XCTAssertTrue(app.buttons["Open in Ember"].waitForExistence(timeout: 5))
+        app.buttons["Open in Ember"].tap()
+        XCTAssertTrue(app.staticTexts["Building a search engine from scratch"].waitForExistence(timeout: 10))
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(link.waitForExistence(timeout: 5), "Back should return to the original comment")
+        link.tap()
+        app.buttons["Open on Hacker News"].tap()
+        XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 10))
+    }
+
     func testOfflineFeedSurvivesRelaunch() {
         let app = launch()
         XCTAssertTrue(app.buttons["story-1001"].waitForExistence(timeout: 10))
