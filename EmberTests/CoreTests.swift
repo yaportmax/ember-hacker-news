@@ -34,6 +34,15 @@ final class ModelTests: XCTestCase {
         XCTAssertNil(HNLinks.itemID(from: URL(string: "https://news.ycombinator.com/item?id=-1")!))
         XCTAssertNil(HNLinks.itemID(from: URL(string: "emberhn://item/0")!))
     }
+    func testReaderDoesNotOpenHNAccountActions() {
+        for path in ["login", "submit", "vote?id=42", "reply?id=42", "forgot", "changepw", "login/"] {
+            XCTAssertNil(WebURL.validated("https://news.ycombinator.com/" + path), path)
+        }
+        XCTAssertNil(WebURL.validated("https://NEWS.YCOMBINATOR.COM/login?goto=news"))
+        XCTAssertNotNil(WebURL.validated(HNLinks.item(42).absoluteString))
+        XCTAssertNotNil(WebURL.validated(HNLinks.user("alex").absoluteString))
+        XCTAssertNotNil(WebURL.validated("https://example.com/login"))
+    }
     func testSearchEscapesQueryAndAppliesDateWindow() {
         let url = HNClient.searchURL("C++ & Swift? #tag", order: .recent, period: .week, page: 2, now: Date(timeIntervalSince1970: 1_000_000))
         let components = URLComponents(url: url, resolvingAgainstBaseURL: false)!

@@ -158,15 +158,20 @@ enum WebURL {
     static func validated(_ value: String?) -> URL? {
         guard let value, let url = URL(string: value.trimmingCharacters(in: .whitespacesAndNewlines)),
               let scheme = url.scheme?.lowercased(), ["https", "http"].contains(scheme),
-              let host = url.host, !host.isEmpty, url.user == nil, url.password == nil else { return nil }
+              let host = url.host, !host.isEmpty, url.user == nil, url.password == nil,
+              !HNLinks.isAccountAction(url) else { return nil }
         return url
     }
 }
 
 enum HNLinks {
     static let home = URL(string: "https://news.ycombinator.com")!
-    static let login = URL(string: "https://news.ycombinator.com/login")!
-    static let submit = URL(string: "https://news.ycombinator.com/submit")!
+    /// Ember reads public content; it does not offer HN authentication or posting.
+    static func isAccountAction(_ url: URL) -> Bool {
+        guard url.host?.lowercased() == "news.ycombinator.com" else { return false }
+        let path = url.path.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        return ["login", "submit", "vote", "reply", "forgot", "changepw"].contains(path)
+    }
     static func item(_ id: Int) -> URL { home.appendingPathComponent("item").appending(queryItems: [URLQueryItem(name: "id", value: String(id))]) }
     static func user(_ name: String) -> URL { home.appendingPathComponent("user").appending(queryItems: [URLQueryItem(name: "id", value: name)]) }
     static func itemID(from url: URL) -> Int? {

@@ -39,7 +39,7 @@ Max can install the configured build through TestFlight. To run a fork on your o
 - iPad layouts, multitasking-compatible sizing, and rotation support.
 - Three icon variants, launch appearance, privacy manifest, Xcode scheme, tests, CI, and release tooling.
 
-Voting, posting, replies, and sign-in use the official Hacker News website. Its public API has no supported authenticated write endpoints. Ember never handles HN credentials. Native bookmarks are independent of HN favorites. External articles and comment trees are **not** downloaded for offline reading; cached feeds and saved story details/post text are available offline.
+Ember reads public Hacker News content and has no accounts, account creation, sign-in, voting, or posting features. Dedicated HN account-action URLs are rejected by its link handler. Native bookmarks are independent of HN favorites. External articles and comment trees are **not** downloaded for offline reading; cached feeds and saved story details/post text are available offline.
 
 ## Test
 

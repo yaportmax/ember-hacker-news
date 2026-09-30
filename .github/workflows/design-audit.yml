@@ -1,7 +1,7 @@
 name: Visual review
 on:
   push:
-    branches: [design/reading-refinement, review/reading-controls, review/discussion-performance, review/spacing-settings, review/spacing-captures, review/storage-check, release/app-store]
+    branches: [design/reading-refinement, review/reading-controls, review/discussion-performance, review/spacing-settings, review/spacing-captures, review/storage-check, release/app-store, fix/account-creation-review]
   workflow_dispatch:
 permissions:
   contents: read
@@ -34,6 +34,7 @@ jobs:
           capture_only = os.environ.get("GITHUB_REF_NAME") == "review/spacing-captures"
           store_captures = os.environ.get("GITHUB_REF_NAME") == "release/app-store"
           storage_only = os.environ.get("GITHUB_REF_NAME") == "review/storage-check"
+          account_review = os.environ.get("GITHUB_REF_NAME") == "fix/account-creation-review"
           if os.environ["AUDIT_DEVICE"] == "iPhone" and not capture_only and not storage_only and not store_captures:
               release.run(["swift", "test", "-j", "1"])
           release.run(["xcrun", "simctl", "bootstatus", device["udid"], "-b"])
@@ -44,6 +45,8 @@ jobs:
               tests = ["testSettledTypographyScreens"]
           if storage_only:
               tests = ["testStorageConfirmationKeepsBookmarks"]
+          if account_review:
+              tests = ["testReaderHasNoAccountCreationOrPostingActions", "testReadSaveAndRestoreBookmark", "testReportAndUnblockFlow", "testStorageConfirmationKeepsBookmarks"]
           if store_captures:
               release.run(["xcrun", "simctl", "status_bar", device["udid"], "override", "--time", "9:41", "--dataNetwork", "wifi", "--wifiMode", "active", "--wifiBars", "3", "--batteryState", "charged", "--batteryLevel", "100"])
               tests = ["testAppStoreScreenshots"]

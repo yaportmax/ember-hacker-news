@@ -18,10 +18,6 @@ struct SettingsView: View {
                 NavigationLink("Storage") { StorageView() }
             }
             Section {
-                Button("Sign in on Hacker News", systemImage: "arrow.up.right") { app.open(HNLinks.login) }
-                Button("Submit a story", systemImage: "arrow.up.right") { app.open(HNLinks.submit) }
-            } header: { Text("Hacker News") } footer: { Text("Opens the Hacker News website.") }
-            Section {
                 NavigationLink("Help & support") { SupportView() }
                 NavigationLink("Privacy") { PrivacyView() }
                 NavigationLink("Acknowledgments") { AcknowledgmentsView() }
@@ -277,7 +273,7 @@ struct PrivacyView: View {
     var body: some View {
         List {
             Section("Your data") {
-                Text("Ember has no advertising SDKs, analytics, tracking, or developer-operated server. The app does not ask for your contacts, location, photos, or Hacker News password.")
+                Text("Ember has no accounts, advertising SDKs, analytics, tracking, or developer-operated server. The app does not ask for your contacts, location, photos, or Hacker News password.")
             }
             Section("Stored on this device") {
                 Text("Bookmarks, reading history, blocked users, hidden stories, and preferences are stored locally. Recent feeds are cached for offline reading. Your device’s backup settings may include local app data. You can remove bookmarks, history, and cached feeds in Settings.")
@@ -285,8 +281,8 @@ struct PrivacyView: View {
             Section("Network requests") {
                 Text("Stories, comments, and profiles are requested from the public Hacker News API hosted by Firebase. Extra feeds come from the Hacker News website. Searches and historical feeds use Algolia’s Hacker News search service; searches send your search text to Algolia. These services receive ordinary connection information, including your IP address, under their own privacy policies.")
             }
-            Section("Articles and accounts") {
-                Text("Opening an article contacts that website through Apple’s browser. Websites may use cookies and collect information under their own policies. Sign-in, votes, replies, and submissions happen on Hacker News. Ember does not read your password or browser cookies.")
+            Section("Websites") {
+                Text("Opening an article contacts that website through Apple’s browser. Websites may use cookies and collect information under their own policies. Ember does not offer account creation, sign-in, voting, or posting, and does not read browser cookies.")
             }
             Section("Policies") {
                 Link("Y Combinator privacy policy", destination: URL(string: "https://www.ycombinator.com/legal#privacy")!)
@@ -302,8 +298,8 @@ struct SupportView: View {
         List {
             Section("Reading") { Text("Tap a story title to open the article. Tap the comment count beneath it to open the discussion. Swipe right on a story to read it directly.") }
             Section("Saving") { Text("Swipe left on a story, or tap the bookmark in a discussion. Saved stories appear in the Saved tab. Bookmarks preserve the story details and any loaded post text; external articles are not downloaded for offline use.") }
-            Section("Comments") { Text("Tap a comment to collapse or expand its thread. Use the floating down arrow on long comments to jump to the next comment or reply. Comments start appearing as soon as they are ready. The rest loads ahead in Hacker News order. Long-press a comment to reply on HN, share, report, or block its author.") }
-            Section("Accounts") { Text("Sign in from Settings to vote, reply, or submit on the Hacker News website. Ember bookmarks are separate from your HN favorites.") }
+            Section("Comments") { Text("Tap a comment to collapse or expand its thread. Use the floating down arrow on long comments to jump to the next comment or reply. Comments start appearing as soon as they are ready. The rest loads ahead in Hacker News order. Long-press a comment to share, report, or block its author.") }
+            Section("No account needed") { Text("Ember is a reader for public Hacker News content. It has no account creation or sign-in. Bookmarks and reading history stay on your device and can be removed in Settings > Storage.") }
             Section("Troubleshooting") { Text("Pull down to refresh. If you’re offline, previously loaded feeds and saved story details remain available. Check your connection if new comments or search results cannot load.") }
             if let support = Bundle.main.object(forInfoDictionaryKey: "EmberSupportURL") as? String,
                let url = WebURL.validated(support), !support.contains("$(") {

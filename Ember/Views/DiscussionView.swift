@@ -110,7 +110,6 @@ struct DiscussionView: View {
                     }
                     ShareLink(item: model.story.discussionURL) { Label("Share discussion", systemImage: "square.and.arrow.up") }
                     if let url = model.story.articleURL { ShareLink(item: url) { Label("Share article", systemImage: "link") } }
-                    Button(model.story.type == "job" ? "Open on Hacker News" : "Vote or reply on HN", systemImage: "arrow.up.right.square") { app.open(model.story.discussionURL) }
                     Divider()
                     if !(model.story.kids ?? []).isEmpty {
                     Button("Collapse all threads", systemImage: "arrow.up.right.and.arrow.down.left") { model.collapseAll() }
@@ -278,7 +277,6 @@ struct CommentView: View {
         }
         .contextMenu {
             Button(collapsed ? "Expand thread" : "Collapse thread", systemImage: collapsed ? "plus" : "minus", action: toggle)
-            Button("Reply on Hacker News", systemImage: "arrowshape.turn.up.left") { app.open(item.discussionURL) }
             ShareLink(item: item.discussionURL) { Label("Share comment", systemImage: "square.and.arrow.up") }
             Button("Report comment", systemImage: "flag", action: report)
             if item.by != nil { Button("Block user", systemImage: "person.slash", role: .destructive, action: block) }

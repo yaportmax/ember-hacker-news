@@ -26,6 +26,31 @@ import XCTest
         XCTAssertTrue(restored.buttons["story-1001"].waitForExistence(timeout: 5))
     }
 
+    func testReaderHasNoAccountCreationOrPostingActions() {
+        let app = launch()
+        XCTAssertTrue(app.buttons["story-1001"].waitForExistence(timeout: 10))
+        selectTab("Settings", in: app)
+        XCTAssertTrue(app.switches["Compact stories"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Sign in on Hacker News"].exists)
+        XCTAssertFalse(app.buttons["Submit a story"].exists)
+        attach(app, name: "Audit-Accounts-Settings")
+        app.buttons["Help & support"].tap()
+        XCTAssertTrue(app.staticTexts["No account needed"].waitForExistence(timeout: 5))
+        attach(app, name: "Audit-Accounts-Help")
+        selectTab("Stories", in: app)
+        app.buttons["story-1001"].tap()
+        XCTAssertTrue(app.buttons["bookmark-story"].waitForExistence(timeout: 5))
+        app.buttons["Discussion actions"].tap()
+        XCTAssertTrue(app.buttons["Share discussion"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Vote or reply on HN"].exists)
+        attach(app, name: "Audit-Accounts-Discussion")
+        app.tap()
+        app.staticTexts["comment-text-2001"].press(forDuration: 1)
+        XCTAssertTrue(app.buttons["Share comment"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Reply on Hacker News"].exists)
+        attach(app, name: "Audit-Accounts-Comment")
+    }
+
     func testSearchAndEmptyResults() {
         let app = launch()
         selectTab("Search", in: app)

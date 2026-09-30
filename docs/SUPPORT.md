@@ -22,7 +22,7 @@ Use a comment's menu or author profile to block an author locally. Use Report to
 
 ## Accounts and connections
 
-No account is needed for native reading. Sign-in, voting, replying, and submitting open the official Hacker News website. Ember does not handle passwords.
+Ember has no accounts or sign-in and reads public Hacker News content. It does not offer account creation, voting, replying, or story submission. Bookmarks, history, and cached feeds can be removed in Settings > Storage. Blocked authors and hidden stories can be managed in Settings > Hidden content.
 
 Pull down to refresh after a connection problem. Search uses Algolia and may be unavailable independently of Hacker News. Previously loaded comments remain readable if loading is interrupted.
 

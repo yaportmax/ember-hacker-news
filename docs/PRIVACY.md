@@ -1,6 +1,6 @@
 # Ember privacy policy
 
-Updated September 13, 2026. Published by Max Yaport.
+Updated September 30, 2026. Published by Max Yaport.
 
 Ember is an independent Hacker News reader for iPhone and iPad. It has no advertising SDKs, analytics SDKs, tracking, or developer-operated server. It does not request your contacts, location, photos, or Hacker News password.
 
@@ -14,9 +14,11 @@ Stories, comments, and profiles come from the public Hacker News API hosted by F
 
 These providers receive ordinary connection information, including your IP address, under their own policies. Ember does not send an advertising identifier or create an app account. The developer does not receive your searches, bookmarks, reading history, or app preferences.
 
-## Articles and accounts
+## Websites and accounts
 
-Opening an article contacts that website through Apple's browser or your chosen external browser. Websites may use cookies and collect information under their own policies. Signing in, voting, replying, and submitting stories take place on the official Hacker News website. Ember does not read your password or browser cookies.
+Ember has no accounts, account creation, sign-in, voting, or posting features. It does not create guest accounts or store credentials. There is no Ember account record to delete. Local bookmarks, history, and cached feeds can be removed in Settings > Storage.
+
+Opening an article or a public source link contacts that website through Apple's browser or your chosen external browser. Websites may use cookies and collect information under their own policies. Ember does not read passwords or browser cookies.
 
 ## Support
 
