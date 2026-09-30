@@ -53,7 +53,7 @@ actor MediaService {
             try video.insertTimeRange(range, of: sourceVideo, at: cursor)
             if let sourceAudio = try await asset.loadTracks(withMediaType: .audio).first {
                 let available = try await sourceAudio.load(.timeRange)
-                let audioRange = CMTimeRangeGetIntersection(range, available)
+                let audioRange = CMTimeRangeGetIntersection(range, otherRange: available)
                 if audioRange.duration.seconds > 0 {
                     try audio.insertTimeRange(audioRange, of: sourceAudio, at: cursor + (audioRange.start - range.start))
                 }
