@@ -47,7 +47,7 @@ final class AppStore {
         if ProcessInfo.processInfo.arguments.contains("--ui-testing") { fixture = true; seedFixture(); ready = true; return }
         #endif
         do { archive = try await disk.load() }
-        catch { storageHealthy = false; error = error.localizedDescription; ready = true; return }
+        catch { storageHealthy = false; self.error = error.localizedDescription; ready = true; return }
         // An interrupted process cannot remain stuck at "uploading" after relaunch.
         for index in archive.drafts.indices where archive.drafts[index].phase == .preparing || archive.drafts[index].phase == .uploading { archive.drafts[index].phase = .queued }
         selectedGroup = archive.groups.first?.id
@@ -133,6 +133,9 @@ final class AppStore {
         uploadTask = Task { await runQueue(); uploadTask = nil }
     }
     private func runQueue() async {
+        do {
+            guard try await cloud.identity() == user else { throw VlohError.message("Switch back to your original iCloud account to upload these drafts.") }
+        } catch { syncMessage = error.localizedDescription; return }
         while online, let draft = archive.drafts.first(where: { $0.phase == .queued }) {
             activeUpload = draft.id
             let background = UIApplication.shared.beginBackgroundTask(withName: "Vloh upload") { [weak self] in
@@ -153,8 +156,9 @@ final class AppStore {
                 let poster = await media.exportURL(file + ".jpg")
                 let vlog = try await cloud.post(current, author: user, name: name, video: video, poster: poster)
                 if !archive.vlogs.contains(where: { $0.id == vlog.id && $0.group == vlog.group }) { archive.vlogs.append(vlog) }
+                let savedDrafts = archive.drafts
                 archive.drafts.removeAll { $0.id == draft.id }
-                try await persist()
+                do { try await persist() } catch { archive.drafts = savedDrafts; throw error }
                 await media.cleanup(current)
             } catch {
                 if let index = archive.drafts.firstIndex(where: { $0.id == draft.id }) {

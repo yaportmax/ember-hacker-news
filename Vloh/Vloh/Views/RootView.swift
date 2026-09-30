@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(AppStore.self) private var store
+    @AppStorage("appearance") private var appearance = "system"
     @State private var tab = 0
     @State private var onboarding = false
     var body: some View {
@@ -17,6 +18,7 @@ struct RootView: View {
                 }
             }
         }
+        .preferredColorScheme(appearance == "dark" ? .dark : appearance == "light" ? .light : nil)
         .alert("Couldn't finish that", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) {
             Button("OK") { store.error = nil }
         } message: { Text(store.error ?? "") }
@@ -49,3 +51,4 @@ struct WelcomeView: View {
         }
     }
 }
+
