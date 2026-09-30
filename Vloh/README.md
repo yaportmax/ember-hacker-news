@@ -25,6 +25,7 @@ Shared-zone members have CloudKit read/write permissions. This is intended for a
 Chat refreshes on entry, manual refresh, and every 15 seconds while open. Push notification delivery and scheduled turn reminders are not implemented in this build. Rotation currently uses registered member rows, so a removed share participant's row should be cleaned up before relying on rotation.
 
 ## Tests
-`swift test -j 2` runs portable archive/rotation tests. `python3 scripts/validate.py` runs native unit/UI tests, exports screenshot evidence, and builds the Release device target without signing on a Mac. CI uses the same script. Fixtures exist only in Debug under `--ui-testing`.
+`swift test -j 2` on macOS 15+ runs archive/rotation and actual video import/export tests. `python3 scripts/validate.py` runs native unit/UI tests, exports screenshot evidence, and builds the Release device target without signing on a Mac. CI uses the same script. Fixtures exist only in Debug under `--ui-testing` or the native unit test host.
 
 A new app must be registered in App Store Connect before its first upload. See `Release/SETUP.md`. No TestFlight availability is claimed until Apple confirms the processed build and Max's internal tester group.
+
