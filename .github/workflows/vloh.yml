@@ -1,0 +1,25 @@
+name: Vloh native validation
+on:
+  push:
+    branches: [vloh/native]
+    paths: ['Vloh/**', '.github/workflows/vloh.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: vloh-validation
+  cancel-in-progress: true
+jobs:
+  ios:
+    runs-on: macos-26
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Native unit tests, UI tests, screenshots and Release build
+        run: python3 Vloh/scripts/validate.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vloh-native-evidence
+          path: Vloh/build/
+          retention-days: 5
