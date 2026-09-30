@@ -28,8 +28,9 @@ final class VlohUITests: XCTestCase {
         XCTAssertTrue(app.buttons["record-day"].waitForExistence(timeout: 5))
     }
     @MainActor private func selectTab(_ title: String, in app: XCUIApplication) {
-        // iPad places tabs at the top and does not expose an XCUI TabBar.
-        let button = app.buttons[title]
+        // iPad exposes the floating tab cell and its child with identical labels
+        // and frames. Target the first cell rather than an ambiguous element.
+        let button = app.buttons.matching(NSPredicate(format: "label == %@", title)).firstMatch
         XCTAssertTrue(button.waitForExistence(timeout: 5))
         button.tap()
     }
