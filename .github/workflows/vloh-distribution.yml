@@ -1,0 +1,27 @@
+name: Finish Vloh TestFlight distribution
+on:
+  push:
+    branches: [vloh/native]
+    paths: ['VlohRelease/**', '.github/workflows/vloh-distribution.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: vloh-distribution
+  cancel-in-progress: false
+jobs:
+  distribution:
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify processing and finish Max's access to validated build 10.1.0
+        env:
+          EMBER_APPLE_SIGNING: ${{ secrets.EMBER_APPLE_SIGNING }}
+        run: python3 VlohRelease/reconcile.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vloh-distribution-receipt
+          path: VlohRelease/receipt.json
+          retention-days: 14
