@@ -2,7 +2,7 @@
 
 A minimal native Hacker News reader for iPhone and iPad. Swift 6, SwiftUI, iOS 17+. No packages, backend, advertisements, or analytics.
 
-**Status:** Private TestFlight **1.0.0 (5.1.0)** is processed by Apple and available to Max's internal group. This update loads large discussions progressively, keeps scrolling work small, and adds centered 14-point comment defaults with verified live spacing controls. [Native review and screenshots](docs/review/DISCUSSION-PERFORMANCE.md) · [Signed build and upload](https://github.com/yaportmax/ember-hacker-news/actions/runs/34759161548) · [TestFlight setup](Release/TESTFLIGHT.md).
+**Status:** App Store replacement **1.0.0 (7.1.0)** is processed by Apple and ready for resubmission. It removes the Hacker News sign-in/registration and posting shortcuts that caused a Guideline 5.1.1(v) rejection. [Correction and native screenshots](docs/review/ACCOUNT-CREATION.md) · [Signed build and upload](https://github.com/yaportmax/ember-hacker-news/actions/runs/36740880373) · [Publication status](Release/PUBLICATION.md).
 
 ## Actual app screenshots
 

@@ -2,7 +2,9 @@
 
 The publisher approved the application and requested public release on September 13, 2026.
 
-Status: **preparing submission; not published or submitted for review**.
+Current status, September 30, 2026: **replacement build 7.1.0 processed and ready for resubmission**. Version 1.0 with build 6.1.0 was submitted September 24 and rejected September 30 under Guideline 5.1.1(v). The original links opened Hacker News's own login/registration webpage. The replacement removes those dedicated account and posting entry points. [Correction evidence](../docs/review/ACCOUNT-CREATION.md).
+
+The dated sections below preserve the earlier preparation history.
 
 - App: Ember for Hacker News, Apple ID `6811495244`, bundle `com.maxyaport.ember`.
 - Version: `1.0.0`. The approved TestFlight build `5.1.0` was internal-only and cannot be submitted to customers.

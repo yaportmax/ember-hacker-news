@@ -1,0 +1,24 @@
+{
+  "uploaded_at": "2026-09-30T16:02:51.151105+00:00",
+  "source_commit": "48ac2f5ff1255472e3226ca9607790f7cd1f267c",
+  "source_sha256": "7e5a29bc69a519f5f79bb85264267d48740f7da203675c0c8afe764f1607d919",
+  "workflow_run": "36740880373",
+  "checks": [
+    "static project checks",
+    "core and live API tests",
+    "signed Release archive"
+  ],
+  "ui_tests_run": false,
+  "bundle_id": "com.maxyaport.ember",
+  "version": "1.0.0",
+  "build": "7.1.0",
+  "internal_only": false,
+  "status": "available to internal testers",
+  "apple_build_id": "e20dc669-ca4c-41e4-8832-4fd25355b0dd",
+  "processing_state": "VALID",
+  "internal_build_state": "IN_BETA_TESTING",
+  "beta_groups": [
+    "aed222f8-bdd7-4b26-9a8a-7618e3a65278"
+  ],
+  "verified_at": "2026-09-30T16:04:23.205372+00:00"
+}

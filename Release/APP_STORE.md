@@ -55,6 +55,8 @@ The first release of Ember: native feeds, threaded comments, search, bookmarks, 
 
 ## Review notes
 
+Replacement build 7.1.0 addresses Guideline 5.1.1(v) by removing account-creation/sign-in and posting entry points. The attached Ember-7.1.0-review-correction.pdf contains the explanation and fresh native iPhone/iPad simulator screenshots from the submitted source. It documents removal of account support, rather than an account-deletion flow.
+
 No account is needed for the app’s native reading features. The app uses the public Hacker News API and Algolia search. For testing, open Top, select a story, read automatically expanded replies, save the story with the bookmark button, and open the Saved tab. Search supports relevance/recent sorting and date ranges.
 
 Guideline 5.1.1(v): the previous build linked to Hacker News's combined sign-in/account-creation webpage. The updated build removes the Sign in on Hacker News and Submit a story settings buttons, the Vote or reply on HN discussion action, and the Reply on Hacker News comment action. Direct HN login, registration, posting, voting, and password-recovery URLs are rejected by Ember's link handler. Ember has no native or developer-operated accounts, does not automatically create guest accounts, and does not collect credentials. There is no account-creation flow or account record to delete. Bookmarks, history, blocked users, and preferences are local to the device. Settings > Storage offers removal of bookmarks, history, and cached feeds. No demo sign-in is required.
