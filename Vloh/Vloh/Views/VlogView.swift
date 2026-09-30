@@ -10,6 +10,7 @@ struct VlogView: View {
     @State private var loading = false
     @State private var text = ""
     @State private var sending = false
+    @FocusState private var composing: Bool
     @State private var deleting = false
     var replies: [Reply] { store.archive.replies.filter { $0.group == vlog.group && $0.vlogID == vlog.id }.sorted { $0.createdAt < $1.createdAt } }
     var body: some View {
@@ -39,12 +40,13 @@ struct VlogView: View {
         .navigationTitle("\(vlog.authorName)'s day").navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
             HStack {
-                TextField("Say something", text: $text, axis: .vertical).lineLimit(1...4).textFieldStyle(.roundedBorder)
+                TextField("Say something", text: $text, axis: .vertical).focused($composing).lineLimit(1...4).textFieldStyle(.roundedBorder)
                 Button { sending = true; Task { if await store.send(text: text, vlog: vlog) { text = "" }; sending = false } } label: { Image(systemName: "arrow.up.circle.fill").font(.title).frame(width: 44, height: 44) }
                     .disabled(sending || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || text.count > 2000).accessibilityLabel("Send reply")
             }.padding().background(.bar)
         }
         .toolbar {
+            ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Done") { composing = false }.accessibilityIdentifier("dismiss-keyboard") }
             ToolbarItem(placement: .primaryAction) {
                 Menu {
                     if let url { ShareLink(item: url) { Label("Export video", systemImage: "square.and.arrow.up") } }
@@ -81,6 +83,7 @@ struct ChatView: View {
     @Environment(AppStore.self) private var store
     @State private var text = ""
     @State private var sending = false
+    @FocusState private var composing: Bool
     private var replies: [Reply] { store.archive.replies.filter { $0.group == store.group?.id && $0.vlogID == nil }.sorted { $0.createdAt < $1.createdAt } }
     var body: some View {
         Group {
@@ -99,13 +102,14 @@ struct ChatView: View {
                 }
                 .safeAreaInset(edge: .bottom) {
                     HStack {
-                        TextField("Message your group", text: $text, axis: .vertical).lineLimit(1...4).textFieldStyle(.roundedBorder).accessibilityIdentifier("chat-message")
+                        TextField("Message your group", text: $text, axis: .vertical).focused($composing).lineLimit(1...4).textFieldStyle(.roundedBorder).accessibilityIdentifier("chat-message")
                         Button { sending = true; Task { if await store.send(text: text) { text = "" }; sending = false } } label: { Image(systemName: "arrow.up.circle.fill").font(.title).frame(width: 44, height: 44) }
                             .disabled(sending || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || text.count > 2000).accessibilityLabel("Send message").accessibilityIdentifier("send-message")
                     }.padding().background(.bar)
                 }
             }
         }.navigationTitle(store.group?.name ?? "Chat").navigationBarTitleDisplayMode(.inline)
+        .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Done") { composing = false }.accessibilityIdentifier("dismiss-keyboard") } }
         .task {
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .seconds(15)); await store.refresh() } catch { return }
@@ -113,3 +117,4 @@ struct ChatView: View {
         }
     }
 }
+

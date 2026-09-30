@@ -12,6 +12,7 @@ final class VlohUITests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 5)); field.tap(); field.typeText("Hello buddies")
         app.buttons["send-message"].tap()
         XCTAssertTrue(app.staticTexts["Hello buddies"].waitForExistence(timeout: 5))
+        app.buttons["dismiss-keyboard"].tap()
         attach(app, "Chat")
         app.tabBars.buttons["Settings"].tap()
         XCTAssertTrue(app.staticTexts["Your privacy"].waitForExistence(timeout: 5))
