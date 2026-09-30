@@ -104,11 +104,6 @@ def main():
             internal=next((g for g in groups if g['attributes']['name']=='Max — Internal Testing'),None)
             if internal is None:
                 internal=api('betaGroups','POST',{'data':{'type':'betaGroups','attributes':{'name':'Max — Internal Testing','isInternalGroup':True,'hasAccessToAllBuilds':True,'publicLinkEnabled':False},'relationships':{'app':{'data':{'type':'apps','id':app_id}}}}})['data']
-            # Reuse the tester already in Max's Ember internal group; don't invite new addresses.
-            testers=api('betaGroups/aed222f8-bdd7-4b26-9a8a-7618e3a65278/betaTesters')['data']
-            enrolled={t['id'] for t in api('betaGroups/'+internal['id']+'/betaTesters')['data']}
-            missing=[t for t in testers if t['id'] not in enrolled]
-            if missing: api('betaGroups/'+internal['id']+'/relationships/betaTesters','POST',{'data':[{'type':'betaTesters','id':t['id']} for t in missing]})
             deadline=time.monotonic()+600
             while time.monotonic()<deadline:
                 builds=api('builds?'+urlencode({'filter[app]':app_id,'filter[version]':number,'include':'buildBetaDetail,betaGroups'}))
@@ -116,10 +111,27 @@ def main():
                     item=builds['data'][0]; state=item['attributes']['processingState']
                     if state in ['FAILED','INVALID']: raise RuntimeError('Apple rejected processing this build.')
                     if state=='VALID':
-                        api('betaGroups/'+internal['id']+'/relationships/builds','POST',{'data':[{'type':'builds','id':item['id']}]})
+                        localizations=api('builds/'+item['id']+'/betaBuildLocalizations')['data']
+                        if not localizations:
+                            api('betaBuildLocalizations','POST',{'data':{'type':'betaBuildLocalizations','attributes':{'locale':'en-US','whatsNew':'Test recording/importing clips, trims and audio, saved drafts, private iCloud invitations, playback, reactions and chat.'},'relationships':{'build':{'data':{'type':'builds','id':item['id']}}}}})
+                        attached=api('betaGroups/'+internal['id']+'/builds')['data']
+                        if not any(b['id']==item['id'] for b in attached):
+                            api('betaGroups/'+internal['id']+'/relationships/builds','POST',{'data':[{'type':'builds','id':item['id']}]})
+                        enrolled=api('betaGroups/'+internal['id']+'/betaTesters')['data']
+                        if not enrolled:
+                            source=api('betaGroups/aed222f8-bdd7-4b26-9a8a-7618e3a65278')['data']
+                            assert source['attributes']['isInternalGroup']
+                            testers=api('betaGroups/'+source['id']+'/betaTesters')['data']
+                            assert len(testers)==1, 'Only reuse Max; source tester group changed.'
+                            # Directly linking the Ember tester ID returned HTTP
+                            # 409. Resolve Max's membership atomically by email,
+                            # as verified on Vloh build 10.1.0.
+                            api('betaTesters','POST',{'data':{'type':'betaTesters','attributes':{'email':testers[0]['attributes']['email']},'relationships':{'betaGroups':{'data':[{'type':'betaGroups','id':internal['id']}]}}}})
+                            enrolled=api('betaGroups/'+internal['id']+'/betaTesters')['data']
+                        assert enrolled, 'No internal tester has access yet.'
                         details=api('builds/'+item['id']+'/buildBetaDetail')['data']['attributes']
                         if details.get('internalBuildState')=='IN_BETA_TESTING':
-                            result.update({'status':'available to Max internal tester group','apple_build_id':item['id'],'group_id':internal['id'],'verified_at':datetime.now(timezone.utc).isoformat()});receipt.write_text(json.dumps(result,indent=2));print(result['status'],flush=True);return
+                            result.update({'status':'available to Max internal tester group','apple_build_id':item['id'],'group_id':internal['id'],'tester_count':len(enrolled),'verified_at':datetime.now(timezone.utc).isoformat()});receipt.write_text(json.dumps(result,indent=2));print(result['status'],flush=True);return
                 print('Waiting for Apple processing.',flush=True);time.sleep(30)
             raise RuntimeError('Uploaded; Apple processing is still pending. Inspect the receipt before reporting availability.')
         finally:
