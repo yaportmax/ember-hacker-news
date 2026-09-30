@@ -23,6 +23,16 @@ jobs:
           name: vloh-native-evidence
           path: Vloh/build/
           retention-days: 5
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vloh-native-screenshots
+          path: |
+            Vloh/build/screenshots-*/*.png
+            Vloh/build/screenshots-*/*.txt
+            Vloh/build/screenshots-*/manifest.json
+            Vloh/build/validation.json
+          retention-days: 5
 
   testflight:
     needs: ios
