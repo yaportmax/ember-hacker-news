@@ -44,7 +44,7 @@ final class AppStore {
     func boot() async {
         guard !ready else { return }
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("--ui-testing") { fixture = true; seedFixture(); ready = true; return }
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing") || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil { fixture = true; seedFixture(); ready = true; return }
         #endif
         do { archive = try await disk.load() }
         catch { storageHealthy = false; self.error = error.localizedDescription; ready = true; return }

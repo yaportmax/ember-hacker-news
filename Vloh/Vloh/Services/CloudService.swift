@@ -10,8 +10,7 @@ struct CloudSnapshot: Sendable {
 }
 // CK objects stay on this actor. Callbacks only mutate a locked accumulator.
 actor CloudService {
-    let container: CKContainer
-    init() { container = CKContainer(identifier: "iCloud.com.maxyaport.vloh") }
+    lazy var container = CKContainer(identifier: "iCloud.com.maxyaport.vloh")
     func identity() async throws -> String {
         guard try await container.accountStatus() == .available else {
             throw VlohError.message("Sign in to iCloud in iPhone Settings to share with your friends.")
@@ -154,3 +153,4 @@ private final class RecordCollector: @unchecked Sendable {
     func fail(_ value: Error) { lock.lock(); defer { lock.unlock() }; error = value }
     func result() -> Result<[CKRecord], Error> { lock.lock(); defer { lock.unlock() }; return error.map { .failure($0) } ?? .success(records) }
 }
+
