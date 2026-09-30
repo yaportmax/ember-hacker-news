@@ -1,84 +1,90 @@
 DEFINE SCHEMA
 
+    RECORD TYPE Users (
+        "___createTime" TIMESTAMP,
+        "___createdBy"  REFERENCE,
+        "___etag"       STRING,
+        "___modTime"    TIMESTAMP,
+        "___modifiedBy" REFERENCE,
+        "___recordID"   REFERENCE,
+        roles           LIST<INT64>,
+        GRANT WRITE TO "_creator",
+        GRANT READ TO "_world"
+    );
+
     RECORD TYPE VlohGroup (
         "___createTime" TIMESTAMP,
-        "___createdBy" REFERENCE,
-        "___etag" STRING,
-        "___modTime" TIMESTAMP,
+        "___createdBy"  REFERENCE,
+        "___etag"       STRING,
+        "___modTime"    TIMESTAMP,
         "___modifiedBy" REFERENCE,
-        "___recordID" REFERENCE,
-        name STRING,
-        createdAt TIMESTAMP,
-        rotation INT64,
-        timeZone STRING,
-        GRANT CREATE TO "_icloud",
-        GRANT WRITE TO "_creator",
-        GRANT READ TO "_creator"
+        "___recordID"   REFERENCE,
+        createdAt       TIMESTAMP,
+        name            STRING,
+        rotation        INT64,
+        timeZone        STRING,
+        GRANT READ, WRITE TO "_creator",
+        GRANT CREATE TO "_icloud"
     );
 
     RECORD TYPE VlohMember (
         "___createTime" TIMESTAMP,
-        "___createdBy" REFERENCE,
-        "___etag" STRING,
-        "___modTime" TIMESTAMP,
+        "___createdBy"  REFERENCE,
+        "___etag"       STRING,
+        "___modTime"    TIMESTAMP,
         "___modifiedBy" REFERENCE,
-        "___recordID" REFERENCE,
-        user STRING,
-        name STRING,
-        joinedAt TIMESTAMP,
-        GRANT CREATE TO "_icloud",
-        GRANT WRITE TO "_creator",
-        GRANT READ TO "_creator"
-    );
-
-    RECORD TYPE VlohVlog (
-        "___createTime" TIMESTAMP,
-        "___createdBy" REFERENCE,
-        "___etag" STRING,
-        "___modTime" TIMESTAMP,
-        "___modifiedBy" REFERENCE,
-        "___recordID" REFERENCE,
-        author STRING,
-        authorName STRING,
-        caption STRING,
-        createdAt TIMESTAMP,
-        duration DOUBLE,
-        video ASSET,
-        poster ASSET,
-        GRANT CREATE TO "_icloud",
-        GRANT WRITE TO "_creator",
-        GRANT READ TO "_creator"
-    );
-
-    RECORD TYPE VlohReply (
-        "___createTime" TIMESTAMP,
-        "___createdBy" REFERENCE,
-        "___etag" STRING,
-        "___modTime" TIMESTAMP,
-        "___modifiedBy" REFERENCE,
-        "___recordID" REFERENCE,
-        vlog STRING,
-        author STRING,
-        authorName STRING,
-        text STRING,
-        createdAt TIMESTAMP,
-        GRANT CREATE TO "_icloud",
-        GRANT WRITE TO "_creator",
-        GRANT READ TO "_creator"
+        "___recordID"   REFERENCE,
+        joinedAt        TIMESTAMP,
+        name            STRING,
+        user            STRING,
+        GRANT READ, WRITE TO "_creator",
+        GRANT CREATE TO "_icloud"
     );
 
     RECORD TYPE VlohReaction (
         "___createTime" TIMESTAMP,
-        "___createdBy" REFERENCE,
-        "___etag" STRING,
-        "___modTime" TIMESTAMP,
+        "___createdBy"  REFERENCE,
+        "___etag"       STRING,
+        "___modTime"    TIMESTAMP,
         "___modifiedBy" REFERENCE,
-        "___recordID" REFERENCE,
-        vlog STRING,
-        author STRING,
-        emoji STRING,
-        GRANT CREATE TO "_icloud",
-        GRANT WRITE TO "_creator",
-        GRANT READ TO "_creator"
+        "___recordID"   REFERENCE,
+        author          STRING,
+        emoji           STRING,
+        vlog            STRING,
+        GRANT READ, WRITE TO "_creator",
+        GRANT CREATE TO "_icloud"
     );
 
+    RECORD TYPE VlohReply (
+        "___createTime" TIMESTAMP,
+        "___createdBy"  REFERENCE,
+        "___etag"       STRING,
+        "___modTime"    TIMESTAMP,
+        "___modifiedBy" REFERENCE,
+        "___recordID"   REFERENCE,
+        author          STRING,
+        authorName      STRING,
+        createdAt       TIMESTAMP,
+        text            STRING,
+        vlog            STRING,
+        GRANT READ, WRITE TO "_creator",
+        GRANT CREATE TO "_icloud"
+    );
+
+    RECORD TYPE VlohVlog (
+        "___createTime" TIMESTAMP,
+        "___createdBy"  REFERENCE,
+        "___etag"       STRING,
+        "___modTime"    TIMESTAMP,
+        "___modifiedBy" REFERENCE,
+        "___recordID"   REFERENCE,
+        author          STRING,
+        authorName      STRING,
+        caption         STRING,
+        createdAt       TIMESTAMP,
+        duration        DOUBLE,
+        poster          ASSET,
+        video           ASSET,
+        GRANT READ, WRITE TO "_creator",
+        GRANT CREATE TO "_icloud"
+    );

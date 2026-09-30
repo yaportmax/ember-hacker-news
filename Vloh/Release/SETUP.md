@@ -13,3 +13,12 @@ CloudKit container: `iCloud.com.maxyaport.vloh`.
 Record types: `VlohGroup`, `VlohMember`, `VlohVlog`, `VlohReply`, `VlohReaction`. Sync uses zone-change fetches, so no query indexes are required. Video/poster fields on VlohVlog are CKAsset fields. Others are represented by the production schema in `cloudkit-schema.ckdb`.
 
 Private TestFlight does not publish the app to the App Store. Signed builds must be verified for processing and tester access. A CloudKit Production deployment is required for real TestFlight sharing, not merely a simulator compile pass.
+
+
+## Registration completed September 30, 2026
+
+- App Store Connect app ID: `6817912319`.
+- Bundle registration, CloudKit container association, and Push capability completed.
+- All five record types deployed to Production. Custom Vloh types grant no public `_world` access. Private/shared zones control group participant access.
+- The `vloh.yml` workflow validates native tests before signing. It obtains a separate Vloh App Store provisioning profile and uses the existing encrypted Ember distribution certificate/API credentials only within the GitHub runner.
+- Signed upload and tester availability must be checked in the workflow receipt; registration alone is not a downloadable app.

@@ -178,10 +178,17 @@
 			"path" = "CoreTests.swift";
 			"sourceTree" = "<group>";
 		};
+		"DFF3E07778386C32BE4E070A" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "MediaTests.swift";
+			"sourceTree" = "<group>";
+		};
 		"11F18AF7BAE978D2E02EB4E8" = {
 			"isa" = "PBXGroup";
 			"children" = (
 				"CE85F51A92F9205C2FFB03DB",
+				"DFF3E07778386C32BE4E070A",
 			);
 			"path" = "VlohTests";
 			"sourceTree" = "<group>";
@@ -466,11 +473,16 @@
 			"isa" = "PBXBuildFile";
 			"fileRef" = "CE85F51A92F9205C2FFB03DB";
 		};
+		"2834310EDA60D4D9B77AD23D" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "DFF3E07778386C32BE4E070A";
+		};
 		"233441A76B3E739584962336" = {
 			"isa" = "PBXSourcesBuildPhase";
 			"buildActionMask" = 2147483647;
 			"files" = (
 				"DA76070E9D4C766F181CD73A",
+				"2834310EDA60D4D9B77AD23D",
 			);
 			"runOnlyForDeploymentPostprocessing" = 0;
 		};

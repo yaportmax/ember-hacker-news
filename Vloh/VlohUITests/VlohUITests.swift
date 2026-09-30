@@ -8,7 +8,7 @@ final class VlohUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Weekend adventures"].waitForExistence(timeout: 5))
         attach(app, "Drafts")
         app.tabBars.buttons["Chat"].tap()
-        let field = app.textFields["chat-message"]
+        let field = app.descendants(matching: .any)["chat-message"]
         XCTAssertTrue(field.waitForExistence(timeout: 5)); field.tap(); field.typeText("Hello buddies")
         app.buttons["send-message"].tap()
         XCTAssertTrue(app.staticTexts["Hello buddies"].waitForExistence(timeout: 5))
@@ -30,3 +30,4 @@ final class VlohUITests: XCTestCase {
         let attachment = XCTAttachment(screenshot: app.screenshot()); attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
     }
 }
+

@@ -23,3 +23,21 @@ jobs:
           name: vloh-native-evidence
           path: Vloh/build/
           retention-days: 5
+
+  testflight:
+    needs: ios
+    runs-on: macos-26
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sign Vloh, upload and verify internal TestFlight availability
+        env:
+          EMBER_APPLE_SIGNING: ${{ secrets.EMBER_APPLE_SIGNING }}
+          VLOH_BUILD_NUMBER: ${{ github.run_number }}.${{ github.run_attempt }}.0
+        run: python3 Vloh/scripts/testflight.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vloh-testflight-receipt
+          path: Vloh/build/testflight-upload.json
+          retention-days: 14

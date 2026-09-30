@@ -67,7 +67,7 @@ final class AppStore {
     }
     func save() { Task { do { try await persist() } catch { self.error = error.localizedDescription } } }
     func refresh() async {
-        guard !fixture, storageHealthy, !syncing else { return }
+        guard ready, !fixture, storageHealthy, !syncing else { return }
         syncing = true
         defer { syncing = false }
         do {

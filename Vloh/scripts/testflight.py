@@ -77,12 +77,12 @@ def main():
         api_dir=Path.home()/'.appstoreconnect/private_keys'; api_dir.mkdir(parents=True,exist_ok=True)
         api_key=api_dir/key.name
         if api_key.exists(): raise RuntimeError('Refusing to overwrite an existing API key file.')
-        api_key.write_bytes(key.read_bytes()); api_key.chmod(0o600)
         profile_dir=Path.home()/'Library/Developer/Xcode/UserData/Provisioning Profiles'; profile_dir.mkdir(parents=True,exist_ok=True)
         profile_path=profile_dir/(uuid+'.mobileprovision')
         if profile_path.exists(): raise RuntimeError('Refusing to replace an existing profile.')
-        profile_path.write_bytes(checked_profile.read_bytes()); profile_path.chmod(0o600)
         try:
+            api_key.write_bytes(key.read_bytes()); api_key.chmod(0o600)
+            profile_path.write_bytes(checked_profile.read_bytes()); profile_path.chmod(0o600)
             security('create-keychain','-p',chain_password,chain)
             security('set-keychain-settings','-lut','21600',chain)
             security('unlock-keychain','-p',chain_password,chain)
@@ -106,7 +106,9 @@ def main():
                 internal=api('betaGroups','POST',{'data':{'type':'betaGroups','attributes':{'name':'Max — Internal Testing','isInternalGroup':True,'hasAccessToAllBuilds':True,'publicLinkEnabled':False},'relationships':{'app':{'data':{'type':'apps','id':app_id}}}}})['data']
             # Reuse the tester already in Max's Ember internal group; don't invite new addresses.
             testers=api('betaGroups/aed222f8-bdd7-4b26-9a8a-7618e3a65278/betaTesters')['data']
-            if testers: api('betaGroups/'+internal['id']+'/relationships/betaTesters','POST',{'data':[{'type':'betaTesters','id':t['id']} for t in testers]})
+            enrolled={t['id'] for t in api('betaGroups/'+internal['id']+'/betaTesters')['data']}
+            missing=[t for t in testers if t['id'] not in enrolled]
+            if missing: api('betaGroups/'+internal['id']+'/relationships/betaTesters','POST',{'data':[{'type':'betaTesters','id':t['id']} for t in missing]})
             deadline=time.monotonic()+600
             while time.monotonic()<deadline:
                 builds=api('builds?'+urlencode({'filter[app]':app_id,'filter[version]':number,'include':'buildBetaDetail,betaGroups'}))
