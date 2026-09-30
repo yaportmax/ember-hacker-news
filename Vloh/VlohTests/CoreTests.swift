@@ -7,6 +7,36 @@ import XCTest
 
 final class CoreTests: XCTestCase {
     let id = GroupID(zone: "group", owner: "owner", shared: false)
+    #if !SWIFT_PACKAGE
+    @MainActor func testQueuedDraftRejectsStaleEditButPersistsUploadProgress() async throws {
+        let store = AppStore()
+        await store.boot()
+        var draft = Draft(group: id, caption: "Queued", phase: .queued)
+        store.archive.drafts = [draft]
+        var staleEdit = draft
+        staleEdit.phase = .draft; staleEdit.caption = "Stale editor"
+        try await store.update(staleEdit)
+        XCTAssertEqual(store.archive.drafts.first, draft)
+
+        store.activeUpload = draft.id
+        draft.phase = .preparing
+        try await store.updateUpload(draft)
+        XCTAssertEqual(store.archive.drafts.first?.phase, .preparing)
+        draft.exportedFile = "completed.mp4"; draft.phase = .uploading
+        try await store.updateUpload(draft)
+
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let disk = DiskStore(root: root)
+        try await disk.save(store.archive)
+        let restored = try await disk.load()
+        XCTAssertEqual(restored.drafts.first?.exportedFile, "completed.mp4")
+        XCTAssertEqual(restored.drafts.first?.phase, .uploading)
+
+        store.activeUpload = nil
+        do { try await store.updateUpload(draft); XCTFail("Inactive uploader must not replace a draft") } catch { }
+    }
+    #endif
     func testTrimCannotProduceNegativeDuration() {
         let clip = Clip(filename: "a.mov", duration: 10, start: 9, end: 2)
         XCTAssertEqual(clip.length, 0)

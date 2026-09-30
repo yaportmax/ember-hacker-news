@@ -115,6 +115,14 @@ final class AppStore {
         archive.drafts[index] = draft
         try await persist()
     }
+    func updateUpload(_ draft: Draft) async throws {
+        guard activeUpload == draft.id,
+              let index = archive.drafts.firstIndex(where: { $0.id == draft.id }) else {
+            throw VlohError.message("This upload is no longer active.")
+        }
+        archive.drafts[index] = draft
+        try await persist()
+    }
     func removeDraft(_ draft: Draft) async {
         guard activeUpload != draft.id else { return }
         let old = archive.drafts
@@ -144,13 +152,13 @@ final class AppStore {
             do {
                 var current = draft
                 if current.exportedFile == nil {
-                    current.phase = .preparing; try await update(current)
+                    current.phase = .preparing; try await updateUpload(current)
                     let export = try await media.export(current)
                     current.exportedFile = export.video
-                    current.phase = .queued; try await update(current)
+                    current.phase = .queued; try await updateUpload(current)
                 }
                 try Task.checkCancellation()
-                current.phase = .uploading; try await update(current)
+                current.phase = .uploading; try await updateUpload(current)
                 guard let file = current.exportedFile else { throw VlohError.message("Your draft needs to be exported again.") }
                 let video = await media.exportURL(file)
                 let poster = await media.exportURL(file + ".jpg")
