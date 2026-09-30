@@ -2,7 +2,7 @@
 
 A minimal native Hacker News reader for iPhone and iPad. Swift 6, SwiftUI, iOS 17+. No packages, backend, advertisements, or analytics.
 
-**Status:** App Store replacement **1.0.0 (7.1.0)** is processed by Apple and ready for resubmission. It removes the Hacker News sign-in/registration and posting shortcuts that caused a Guideline 5.1.1(v) rejection. [Correction and native screenshots](docs/review/ACCOUNT-CREATION.md) · [Signed build and upload](https://github.com/yaportmax/ember-hacker-news/actions/runs/36740880373) · [Publication status](Release/PUBLICATION.md).
+**Status:** App Store replacement **1.0.0 (7.1.0)** was resubmitted on September 30, 2026 at 9:20 AM PDT. Apple shows **Waiting for Review**. It removes the Hacker News sign-in/registration and posting shortcuts that caused a Guideline 5.1.1(v) rejection. [Correction and native screenshots](docs/review/ACCOUNT-CREATION.md) · [Signed build and upload](https://github.com/yaportmax/ember-hacker-news/actions/runs/36740880373) · [Publication status](Release/PUBLICATION.md).
 
 ## Actual app screenshots
 

@@ -2,7 +2,9 @@
 
 The publisher approved the application and requested public release on September 13, 2026.
 
-Current status, September 30, 2026: **replacement build 7.1.0 processed and ready for resubmission**. Version 1.0 with build 6.1.0 was submitted September 24 and rejected September 30 under Guideline 5.1.1(v). The original links opened Hacker News's own login/registration webpage. The replacement removes those dedicated account and posting entry points. [Correction evidence](../docs/review/ACCOUNT-CREATION.md).
+Current status, September 30, 2026: **replacement build 7.1.0 resubmitted; Waiting for Review**. App Store Connect confirmed the resubmission at **9:20 AM PDT**, with version 1.0 and binary 1.0.0 (7.1.0), build ID `e20dc669-ca4c-41e4-8832-4fd25355b0dd`. Submission ID `0df32db8-70ab-465c-8ce7-c9de0d553531`. [Live submission](https://appstoreconnect.apple.com/apps/6811495244/distribution/reviewsubmissions/details/0df32db8-70ab-465c-8ce7-c9de0d553531) · [Confirmation screenshot](../docs/review/account-creation/app-store-waiting-for-review.jpg).
+
+Version 1.0 with build 6.1.0 was submitted September 24 and rejected September 30 under Guideline 5.1.1(v). The original links opened Hacker News's own login/registration webpage. The replacement removes those dedicated account and posting entry points. The revised store description and review notes were saved, the five-page correction PDF was attached to App Review Information, and a reply explaining the removal was sent to Apple before resubmission. Automatic release after approval remains selected. Apple approval is pending. [Correction evidence](../docs/review/ACCOUNT-CREATION.md).
 
 The dated sections below preserve the earlier preparation history.
 

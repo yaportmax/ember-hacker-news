@@ -1,6 +1,10 @@
 # Internal TestFlight
 
-Version **1.0.0 (5.1.0)** is available for private testing as of September 13, 2026, 13:17 UTC. Apple's API confirms processing state **VALID**, internal build state **IN_BETA_TESTING**, and membership in **Max — Internal Testing**. Open TestFlight and update **Ember for Hacker News**. [GitHub build/sign/upload run](https://github.com/yaportmax/ember-hacker-news/actions/runs/34759161548).
+Current build **1.0.0 (7.1.0)** is available for private testing as of September 30, 2026, 16:04 UTC. Apple's API confirms processing state **VALID**, internal build state **IN_BETA_TESTING**, and membership in **Max — Internal Testing**. It is also App Store eligible and was resubmitted for review at 9:20 AM PDT. Open TestFlight and update **Ember for Hacker News**. [GitHub build/sign/upload run](https://github.com/yaportmax/ember-hacker-news/actions/runs/36740880373) · [Upload and availability record](testflight-7.1.0-upload.json) · [Correction evidence](../docs/review/ACCOUNT-CREATION.md).
+
+## Earlier build 5.1.0
+
+Version **1.0.0 (5.1.0)** became available September 13, 2026, 13:17 UTC. [Earlier build/sign/upload run](https://github.com/yaportmax/ember-hacker-news/actions/runs/34759161548).
 
 The uploaded source is `7e0ba1bba4e95181ca516e72efc27cfce1b47901`; Apple's build ID is `c8d94aef-fd4c-4979-be49-6168029d681c`. This update improves large-discussion loading and scroll-time work, sets comment size/row spacing/indentation to centered 14-point defaults, and unifies spacing across comments and live previews. [Native review and screenshots](../docs/review/DISCUSSION-PERFORMANCE.md) · [Upload and availability record](testflight-5.1.0-upload.json).
 

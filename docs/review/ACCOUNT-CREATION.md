@@ -2,6 +2,10 @@
 
 September 30, 2026. Source `48ac2f5ff1255472e3226ca9607790f7cd1f267c`. Release build **1.0.0 (7.1.0)**.
 
+**Resubmitted September 30, 2026 at 9:20 AM PDT.** Apple confirms **Waiting for Review** for build 7.1.0, submission `0df32db8-70ab-465c-8ce7-c9de0d553531`. The correction PDF is attached to App Review Information, and the explanation was sent in the review conversation.
+
+![App Store Connect resubmission confirmation](account-creation/app-store-waiting-for-review.jpg)
+
 Apple rejected build 6.1.0 under Guideline 5.1.1(v). Ember has no developer-operated accounts, but the former Hacker News sign-in shortcut opened HN's combined login-and-registration page. Apple's review screenshot shows an HN account in Apple's browser. The replacement removes dedicated account support rather than inventing a deletion flow for a third-party account Ember does not control.
 
 Removed Settings' Sign in on Hacker News and Submit a story buttons, the discussion menu's Vote or reply on HN action, and the comment menu's Reply on Hacker News action. Direct HN login, posting, voting, and password-recovery URLs are rejected by the link handler. Public reading, source links, articles, reporting, and local blocking remain available. Help, privacy, support, and the App Store description/review notes describe the resulting reader-only behavior.
