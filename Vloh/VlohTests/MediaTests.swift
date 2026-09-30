@@ -1,7 +1,12 @@
 import XCTest
 import AVFoundation
-import UIKit
+import CoreGraphics
+import ImageIO
+#if canImport(VlohCore)
+@testable import VlohCore
+#else
 @testable import Vloh
+#endif
 
 final class MediaTests: XCTestCase {
     @MainActor func testImportTrimAndMixedOrientationExport() async throws {
@@ -29,7 +34,7 @@ final class MediaTests: XCTestCase {
         let size = try await track.load(.naturalSize)
         XCTAssertEqual(size.width, 720); XCTAssertEqual(size.height, 1280)
         let data = try Data(contentsOf: posterURL)
-        XCTAssertNotNil(UIImage(data: data))
+        XCTAssertNotNil(CGImageSourceCreateWithData(data as CFData, nil))
         let originalURL = await service.clipURL(first)
         XCTAssertTrue(FileManager.default.fileExists(atPath: originalURL.path))
         var finished = draft; finished.exportedFile = exported.video

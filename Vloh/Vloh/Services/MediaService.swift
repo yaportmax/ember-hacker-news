@@ -1,7 +1,8 @@
 import AVFoundation
 import CoreTransferable
 import UniformTypeIdentifiers
-import UIKit
+import CoreGraphics
+import ImageIO
 
 struct ImportedMovie: Transferable, Sendable {
     let url: URL
@@ -37,10 +38,10 @@ actor MediaService {
             throw VlohError.message("Keep your vlog under 10 minutes and 40 clips.")
         }
         let composition = AVMutableComposition()
-        guard let video = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid),
-              let audio = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) else {
+        guard let video = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid) else {
             throw VlohError.message("Couldn't prepare the video. Your clips are still saved.")
         }
+        var audio: AVMutableCompositionTrack?
         let canvas = CGSize(width: 720, height: 1280)
         var instructions: [AVMutableVideoCompositionInstruction] = []
         var cursor = CMTime.zero
@@ -55,6 +56,8 @@ actor MediaService {
                 let available = try await sourceAudio.load(.timeRange)
                 let audioRange = CMTimeRangeGetIntersection(range, otherRange: available)
                 if audioRange.duration.seconds > 0 {
+                    if audio == nil { audio = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) }
+                    guard let audio else { throw VlohError.message("Couldn’t prepare the clip’s audio.") }
                     try audio.insertTimeRange(audioRange, of: sourceAudio, at: cursor + (audioRange.start - range.start))
                 }
             }
@@ -70,7 +73,7 @@ actor MediaService {
             let instruction = AVMutableVideoCompositionInstruction()
             instruction.timeRange = CMTimeRange(start: cursor, duration: range.duration)
             instruction.layerInstructions = [layer]
-            instruction.backgroundColor = UIColor.black.cgColor
+            instruction.backgroundColor = CGColor(gray: 0, alpha: 1)
             instructions.append(instruction)
             cursor = cursor + range.duration
         }
@@ -78,7 +81,7 @@ actor MediaService {
         videoComposition.renderSize = canvas
         videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
         videoComposition.instructions = instructions
-        guard let session = AVAssetExportSession(asset: composition, presetName: AVAssetExportPreset1280x720) else {
+        guard let session = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetHighestQuality) else {
             throw VlohError.message("This video format couldn't be exported.")
         }
         session.videoComposition = videoComposition
@@ -94,9 +97,16 @@ actor MediaService {
         generator.appliesPreferredTrackTransform = true
         generator.maximumSize = CGSize(width: 360, height: 640)
         let image = try await generator.image(at: .zero).image
-        guard let data = UIImage(cgImage: image).jpegData(compressionQuality: 0.75) else { throw VlohError.message("Couldn't create a video preview.") }
+        guard let data = CFDataCreateMutable(kCFAllocatorDefault, 0),
+              let jpeg = CGImageDestinationCreateWithData(data, UTType.jpeg.identifier as CFString, 1, nil) else {
+            throw VlohError.message("Couldn't create a video preview.")
+        }
+        CGImageDestinationAddImage(jpeg, image, [kCGImageDestinationLossyCompressionQuality: 0.75] as CFDictionary)
+        guard CGImageDestinationFinalize(jpeg), let bytes = CFDataGetBytePtr(data) else {
+            throw VlohError.message("Couldn't save the video preview.")
+        }
         let poster = filename + ".jpg"
-        try data.write(to: directory.appendingPathComponent(poster), options: .atomic)
+        try Data(bytes: bytes, count: CFDataGetLength(data)).write(to: directory.appendingPathComponent(poster), options: .atomic)
         return (filename, poster)
     }
     func clipURL(_ clip: Clip) -> URL { root.appendingPathComponent("Clips/" + clip.filename) }

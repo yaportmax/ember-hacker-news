@@ -111,7 +111,7 @@ final class AppStore {
         catch { archive.drafts.removeAll { $0.id == draft.id }; self.error = error.localizedDescription; return nil }
     }
     func update(_ draft: Draft) async throws {
-        guard let index = archive.drafts.firstIndex(where: { $0.id == draft.id }) else { return }
+        guard let index = archive.drafts.firstIndex(where: { $0.id == draft.id }), archive.drafts[index].canEdit else { return }
         archive.drafts[index] = draft
         try await persist()
     }
