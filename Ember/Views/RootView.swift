@@ -10,6 +10,8 @@ struct RootView: View {
     @State private var savedPath: [HNItem] = []
     @State private var deepLinkTask: Task<Void, Never>?
     @State private var openingLink = false
+    @State private var pendingHNLink: URL?
+    @State private var showingHNLinkOptions = false
     @AppStorage("readerMode") private var readerMode = true
 
     var body: some View {
@@ -31,7 +33,28 @@ struct RootView: View {
                 .tabItem { Label("Settings", systemImage: "slider.horizontal.3") }.tag(Tab.settings)
         }
         .sheet(item: $app.browser) { route in SafariView(url: route.url, reader: readerMode).ignoresSafeArea() }
-        .environment(\.openURL, OpenURLAction { url in app.open(url); return .handled })
+        .environment(\.openURL, OpenURLAction { url in
+            if HNLinks.itemID(from: url) != nil {
+                pendingHNLink = url
+                showingHNLinkOptions = true
+            } else {
+                app.open(url)
+            }
+            return .handled
+        })
+        .confirmationDialog("Open Hacker News discussion", isPresented: $showingHNLinkOptions, titleVisibility: .visible) {
+            Button("Open in Ember") {
+                guard let url = pendingHNLink else { return }
+                pendingHNLink = nil
+                openDeepLink(url, fromWithinApp: true)
+            }
+            Button("Open on Hacker News") {
+                guard let url = pendingHNLink else { return }
+                pendingHNLink = nil
+                app.open(url)
+            }
+            Button("Cancel", role: .cancel) { pendingHNLink = nil }
+        }
         .alert("Couldn’t open", isPresented: Binding(get: { app.error != nil }, set: { if !$0 { app.error = nil } })) {
             Button("OK", role: .cancel) { app.error = nil }
         } message: { Text(app.error ?? "") }
@@ -84,7 +107,7 @@ struct RootView: View {
         }
     }
 
-    private func openDeepLink(_ url: URL) {
+    private func openDeepLink(_ url: URL, fromWithinApp: Bool = false) {
         guard let id = HNLinks.itemID(from: url) else { app.error = "This isn’t a valid Hacker News item link."; return }
         deepLinkTask?.cancel()
         openingLink = true
@@ -101,8 +124,12 @@ struct RootView: View {
                 }
                 try Task.checkCancellation()
                 guard item.isStory else { throw AppError.missing }
-                selectedTab = .stories
-                storyPath = [item]
+                if fromWithinApp, selectedTab != .settings {
+                    navigate(item, tab: selectedTab)
+                } else {
+                    selectedTab = .stories
+                    storyPath = [item]
+                }
             } catch {
                 if !Task.isCancelled { app.error = friendlyError(error) }
             }

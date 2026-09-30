@@ -46,7 +46,7 @@ struct FixtureService: HNService {
         }
         if id == 9101 { return HNItem(id: 9101, type: "story", by: "julia", title: "Reading controls review", url: "https://example.com", descendants: 5, kids: [9200, 9201, 9202, 9203]) }
         if id == 9200 { return HNItem(id: 9200, type: "comment", by: "waiting", text: "[delayed]") }
-        if id == 9201 { return HNItem(id: 9201, type: "comment", by: "alex", text: "<a href=\"https://example.com\">Example link</a><p>" + Array(repeating: "Reading should be calm and predictable. A long comment gives us room to check scrolling, navigation, and the small controls that keep a discussion easy to follow.", count: 18).joined(separator: "<p>"), kids: [9301]) }
+        if id == 9201 { return HNItem(id: 9201, type: "comment", by: "alex", text: "<a href=\"https://example.com\">Example link</a> · <a href=\"https://news.ycombinator.com/item?id=1002\">Related discussion</a><p>" + Array(repeating: "Reading should be calm and predictable. A long comment gives us room to check scrolling, navigation, and the small controls that keep a discussion easy to follow.", count: 18).joined(separator: "<p>"), kids: [9301]) }
         if id == 9301 { return HNItem(id: 9301, type: "comment", by: "riley", text: "The next reply is now visible.", parent: 9201) }
         if id == 9202 { return HNItem(id: 9202, type: "comment", kids: [9302], deleted: true) }
         if id == 9302 { return HNItem(id: 9302, type: "comment", by: "noah", text: "A visible reply survives its removed parent.", parent: 9202) }
