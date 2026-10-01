@@ -1,0 +1,26 @@
+{
+  "source_commit": "0291a40dab04039da0f4a8c7d4c31a8a2ddab2f6",
+  "workflow_url": "https://github.com/yaportmax/ember-hacker-news/actions/runs/36811015273",
+  "verified_at": "2026-10-01T03:46:27Z",
+  "calendar_persistence_media": {
+    "tests": 14,
+    "failures": 0
+  },
+  "iPhone_UI": {
+    "tests": 4,
+    "failures": 0
+  },
+  "iPad_UI": {
+    "tests": 4,
+    "failures": 0
+  },
+  "device_release_build": "passed_unsigned",
+  "hardware_camera_audio": "not_verified",
+  "live_Apple_iCloud": "not_verified",
+  "updated_TestFlight_upload": false,
+  "external_submission": false,
+  "artifact_ids": {
+    "native_evidence": 11140205308,
+    "screenshots": 11140355186
+  }
+}

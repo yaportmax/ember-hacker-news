@@ -1,6 +1,6 @@
 # External beta review readiness
 
-This is a working audit, not an approval or a guarantee. External review is held until the updated native suite passes, the new CloudKit schema is deployed to Production, and the device acceptance checks below are completed.
+This is a working audit, not an approval or a guarantee. The updated native suite and unsigned device Release build passed on October 1; see `VALIDATION.json`. External review remains held until the new CloudKit schema is deployed to Production, new-account Apple token handling is resolved, and the device acceptance checks below are completed.
 
 ## Review coverage
 

@@ -30,3 +30,7 @@ Build **1.0 (10.1.0)** was signed with the Vloh App Store provisioning profile a
 Native validation passed on Mac, iPhone 17 Pro and iPad, including media export, upload progress persistence, navigation and the Release build. Live camera/audio and two-account CloudKit sharing remain device acceptance checks. Push notifications and scheduled turn reminders are not implemented in this beta.
 
 Future uploads resolve the internal tester by email atomically rather than copying an Ember tester ID, which Apple rejected with HTTP 409. Distribution reconciliation verified that fix against the uploaded build. Buddies need external beta distribution and Apple's first-build TestFlight review; do not add them as App Store Connect team users merely to bypass that review.
+
+## Updated source is not yet in TestFlight
+
+The updated recording, trimming, group schedule, photos and account flows are separate from build 10.1.0 above. That existing build does not contain these changes. Updated source requires the schema additions in `cloudkit-schema.ckdb` (including `VlohProfile`), the native Apple sign-in capability/profile, and the live acceptance checks in `DEVICE_ACCEPTANCE.md`. Resolve new-account Apple token handling described in `REVIEW.md` before external review. The upload job remains disabled until the production schema is ready.
