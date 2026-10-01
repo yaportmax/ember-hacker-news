@@ -86,7 +86,7 @@ final class AppStore {
     }
     func leaveGroup(_ group: GroupID) async {
         guard activeUpload == nil else { error = "Wait for your upload to finish first."; return }
-        do { if !fixture { try await cloud.leave(group) }; archive.groups.removeAll { $0.id == group }; archive.members.removeAll { $0.group == group }; archive.vlogs.removeAll { $0.group == group }; archive.replies.removeAll { $0.group == group }; selectedGroup = archive.groups.first?.id; try await persist() }
+        do { if !fixture { try await cloud.leave(group, user: user) }; archive.groups.removeAll { $0.id == group }; archive.members.removeAll { $0.group == group }; archive.vlogs.removeAll { $0.group == group }; archive.replies.removeAll { $0.group == group }; selectedGroup = archive.groups.first?.id; try await persist() }
         catch { self.error = error.localizedDescription }
     }
     func deleteAccount() async {
@@ -215,7 +215,7 @@ final class AppStore {
         guard let target = archive.groups.first(where: { $0.id == archive.drafts[index].group }) else { error = "This group is unavailable."; return }
         do { try VlogCalendar.validate(archive.drafts[index], group: target, members: archive.members, user: user, now: .now) }
         catch { self.error = error.localizedDescription; return }
-        if archive.vlogs.contains(where: { $0.group == target.id && $0.vlogDay.map { VlogCalendar.key($0, in: target) == VlogCalendar.key(archive.drafts[index].vlogDay!, in: target) } == true }) { error = "This day already has its vlog."; return }
+        if VlogCalendar.hasVlog(archive.vlogs, on: archive.drafts[index].vlogDay!, in: target) { error = "This day already has its vlog."; return }
         archive.drafts[index].phase = .queued; archive.drafts[index].error = nil
         do { try await persist(); startQueue() } catch { self.error = error.localizedDescription }
     }
@@ -334,6 +334,10 @@ final class AppStore {
     }
     func accept(_ metadata: CKShare.Metadata) async {
         do { try await cloud.accept(metadata); await refresh() }
+        catch { self.error = error.localizedDescription }
+    }
+    func sharingChanged(_ group: VlohGroup) async {
+        do { if !fixture { try await cloud.reconcileMembers(group.id) }; await refresh() }
         catch { self.error = error.localizedDescription }
     }
     #if DEBUG

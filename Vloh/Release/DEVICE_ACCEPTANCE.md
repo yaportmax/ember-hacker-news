@@ -1,12 +1,13 @@
 # Vloh device acceptance
 
-Automated validation covers draft persistence, trimming, mixed orientation silent video export, iPhone/iPad navigation, and Release compilation. It does not establish these live iCloud and hardware results. Complete them on the signed TestFlight build before inviting the whole group:
+Automated validation is configured to cover draft persistence, calendar eligibility, visual trimming, mixed orientation video export, repeated fixture capture, group management/chat separation, full-screen playback, iPhone/iPad navigation, and Release compilation. Check the latest run before treating these as passed. It does not establish these live iCloud and hardware results. Complete them on the signed TestFlight build before inviting the whole group:
 
-1. On an iCloud-signed-in iPhone, enter your name and create a private group. Record a clip with audible speech, import a landscape clip, trim and reorder them, then publish. Check picture orientation, clip boundaries and audio sync.
+1. On an iCloud-signed-in iPhone, create an account with native Apple sign-in, set your name and profile photo, and create a private group. Record, stop, then record another clip without a confirmation sheet. Record a clip with audible speech, import a landscape clip, trim and reorder them, then publish. Check picture orientation, clip boundaries and audio sync.
 2. Force quit while a draft is saved, reopen, and confirm its clips and trim survive. Turn off network before sharing; confirm the queued draft survives another relaunch and publishes once after reconnecting.
-3. Invite a second iCloud account using the group’s native private invitation. Accept on its iPhone, watch the vlog, send a chat message, reply and react. Confirm both accounts receive changes.
+3. Invite a second iCloud account using the group’s native private invitation. Accept on its iPhone, watch the vlog, send a chat message, reply and react. Confirm both accounts receive changes. Create a second group and check that chat, vlog history and unread state stay separate. Set a group photo, reorder vloggers for tomorrow and check both local calendars. Test a duplicate post and imports outside the 2 AM to next-day 8 AM window.
 4. Revoke that participant in the native sharing controls. Confirm refreshed group access is removed on the other device. Downloaded or exported copies cannot be recalled.
 5. Delete your posted vlog, refresh on both phones, and confirm it leaves the feed. Replies/reactions are separate CloudKit records; deletion does not remove their records.
-6. Try camera/microphone denial, airplane mode and insufficient iCloud storage. Confirm useful errors preserve the draft. Check dark mode, larger text and VoiceOver on the main screens.
+6. Delete a test account and confirm its profile, cache, drafts, owned groups and contributions to joined groups are removed. Follow the Apple authorization-removal instructions and check revocation signs out.
+7. Try camera/microphone denial, airplane mode and insufficient iCloud storage. Confirm useful errors preserve the draft. Check dark mode, larger text and VoiceOver on the main screens.
 
 Known beta constraints: foreground polling rather than push delivery; no scheduled turn notification; compressed videos download fully before first playback; uploads retry while the app is active; owner iCloud storage is used by the private group. Do not report these as verified background or streaming features.

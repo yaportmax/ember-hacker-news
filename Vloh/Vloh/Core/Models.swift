@@ -109,7 +109,7 @@ enum Rotation {
         }
         guard !people.isEmpty else { return nil }
         if let order = group.orders?.filter({ $0.effectiveDay <= date }).max(by: { $0.effectiveDay < $1.effectiveDay }) {
-            let ids = order.members.filter { id in people.contains(where: { $0.id == id }) } + people.map(\.id).filter { !order.members.contains($0) }
+            let ids = order.members
             guard !ids.isEmpty else { return nil }
             let calendar = VlogCalendar.calendar(for: group)
             let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: order.effectiveDay), to: calendar.startOfDay(for: date)).day ?? 0

@@ -43,27 +43,41 @@ actor CloudService {
         record["user"] = user as CKRecordValue
         record["name"] = name as CKRecordValue
         if let photo { record["photo"] = CKAsset(fileURL: photo) }
-        if record["joinedAt"] == nil { record["joinedAt"] = Date.now as CKRecordValue }
+        let isNew = record["joinedAt"] == nil
+        if isNew { record["joinedAt"] = Date.now as CKRecordValue }
         _ = try await database(group).save(record)
-        try await addToSchedule(user, group: group)
+        try await addToSchedule(user, group: group, isNew: isNew)
     }
-    private func addToSchedule(_ user: String, group: GroupID) async throws {
+    private func addToSchedule(_ user: String, group: GroupID, isNew: Bool) async throws {
         // Re-read after a conflict so concurrent invitations retain both members.
         for attempt in 0..<3 {
             let groupRecord = try await database(group).record(for: recordID("group", group))
             let value = decodeGroup(groupRecord, group)
             var orders = value.orders ?? []
-            if !orders.isEmpty {
-                let latest = orders.max(by: { $0.effectiveDay < $1.effectiveDay })!
-                if !latest.members.contains(user) {
-                    let calendar = VlogCalendar.calendar(for: value)
-                    let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: .now))!
-                    orders.removeAll { $0.effectiveDay >= tomorrow }
-                    orders.append(VlogOrder(effectiveDay: tomorrow, members: latest.members + [user]))
-                    groupRecord["schedule"] = try JSONEncoder().encode(orders) as CKRecordValue
-                    do { _ = try await database(group).save(groupRecord) }
-                    catch let error as CKError where error.code == .serverRecordChanged && attempt < 2 { continue }
+            var changed = false
+            if orders.isEmpty {
+                let members = try await records(in: zoneID(group), database: database(group)).filter { $0.recordType == "VlohMember" }.sorted {
+                    let left = $0["joinedAt"] as? Date ?? .distantPast
+                    let right = $1["joinedAt"] as? Date ?? .distantPast
+                    return left == right ? $0.recordID.recordName < $1.recordID.recordName : left < right
                 }
+                let ids = members.compactMap { $0["user"] as? String }
+                let prior = isNew ? ids.filter { $0 != user } : ids
+                orders = [VlogOrder(effectiveDay: VlogCalendar.day(value.createdAt, in: value), members: prior.isEmpty ? [user] : prior)]
+                changed = true
+            }
+            let latest = orders.max(by: { $0.effectiveDay < $1.effectiveDay })!
+            if !latest.members.contains(user) {
+                let calendar = VlogCalendar.calendar(for: value)
+                let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: .now))!
+                orders.removeAll { $0.effectiveDay >= tomorrow }
+                orders.append(VlogOrder(effectiveDay: tomorrow, members: latest.members + [user]))
+                changed = true
+            }
+            if changed {
+                groupRecord["schedule"] = try JSONEncoder().encode(orders) as CKRecordValue
+                do { _ = try await database(group).save(groupRecord) }
+                catch let error as CKError where error.code == .serverRecordChanged && attempt < 2 { continue }
             }
             return
         }
@@ -75,6 +89,8 @@ actor CloudService {
         let members = records.filter { $0.recordType == "VlohMember" }.map { Member(id: $0["user"] as? String ?? "", group: draft.group, name: $0["name"] as? String ?? "Friend", joinedAt: $0["joinedAt"] as? Date ?? .distantPast) }
         try VlogCalendar.validate(draft, group: group, members: members, user: author, now: .now)
         let id = recordID("day-" + VlogCalendar.key(draft.vlogDay!, in: group), draft.group)
+        let otherVlogs = records.filter { $0.recordType == "VlohVlog" && $0.recordID != id }.map { vlog($0, draft.group) }
+        guard !VlogCalendar.hasVlog(otherVlogs, on: draft.vlogDay!, in: group) else { throw VlohError.message("This day already has its vlog.") }
         // One atomic record ID per group/day also makes retries idempotent.
         do {
             let existing = try await database(draft.group).record(for: id)
@@ -201,12 +217,59 @@ actor CloudService {
         if let asset = record["photo"] as? CKAsset, let file = asset.fileURL { try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true); try Data(contentsOf: file).write(to: destination, options: .atomic); hasPhoto = true }
         return (record["name"] as? String ?? "", record["appleUser"] as? String, hasPhoto)
     }
-    func leave(_ group: GroupID) async throws { _ = try await database(group).deleteRecordZone(withID: zoneID(group)) }
+    func leave(_ group: GroupID, user: String) async throws {
+        if group.shared {
+            try await removeFromSchedule(user, group: group)
+            do { _ = try await database(group).deleteRecord(withID: recordID("member-" + user, group)) } catch let error as CKError where error.code == .unknownItem { }
+        }
+        _ = try await database(group).deleteRecordZone(withID: zoneID(group))
+    }
+    func reconcileMembers(_ group: GroupID) async throws {
+        guard !group.shared else { return }
+        let owner = try await identity()
+        var allowed = Set([owner])
+        let zone = try await database(group).recordZone(for: zoneID(group))
+        if let reference = zone.share {
+            guard let share = try await database(group).record(for: reference.recordID) as? CKShare else { return }
+            let accepted = share.participants.filter { $0.role != .owner && $0.acceptanceStatus == .accepted }
+            let identities = accepted.compactMap { $0.userIdentity.userRecordID?.recordName }
+            guard identities.count == accepted.count else { throw VlohError.message("iCloud hasn't finished updating the member list. Try refreshing shortly.") }
+            allowed.formUnion(identities)
+        }
+        let members = try await records(in: zoneID(group), database: database(group)).filter { $0.recordType == "VlohMember" }
+        for member in members {
+            guard let user = member["user"] as? String, !allowed.contains(user) else { continue }
+            try await removeFromSchedule(user, group: group)
+            do { _ = try await database(group).deleteRecord(withID: member.recordID) } catch let error as CKError where error.code == .unknownItem { }
+        }
+    }
+    private func removeFromSchedule(_ user: String, group: GroupID, anonymize: Bool = false) async throws {
+        for attempt in 0..<3 {
+            let record = try await database(group).record(for: recordID("group", group))
+            let value = decodeGroup(record, group)
+            var orders = value.orders ?? []
+            if orders.isEmpty {
+                let members = try await records(in: zoneID(group), database: database(group)).filter { $0.recordType == "VlohMember" }.sorted { ($0["joinedAt"] as? Date ?? .distantPast) < ($1["joinedAt"] as? Date ?? .distantPast) }
+                orders = [VlogOrder(effectiveDay: VlogCalendar.day(value.createdAt, in: value), members: members.compactMap { $0["user"] as? String })]
+            }
+            let nextMembers = (orders.max(by: { $0.effectiveDay < $1.effectiveDay })?.members ?? []).filter { $0 != user && $0 != "deleted-member" }
+            let calendar = VlogCalendar.calendar(for: value)
+            let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: .now))!
+            orders.removeAll { $0.effectiveDay >= tomorrow }
+            if anonymize { orders = orders.map { VlogOrder(effectiveDay: $0.effectiveDay, members: $0.members.map { $0 == user ? "deleted-member" : $0 }) } }
+            orders.append(VlogOrder(effectiveDay: tomorrow, members: nextMembers))
+            record["schedule"] = try JSONEncoder().encode(orders) as CKRecordValue
+            do { _ = try await database(group).save(record); return }
+            catch let error as CKError where error.code == .serverRecordChanged && attempt < 2 { continue }
+        }
+    }
     func deleteAccount(user: String) async throws {
         // Fresh zone metadata ensures deletion covers every current membership.
         for (database, shared) in [(container.privateCloudDatabase, false), (container.sharedCloudDatabase, true)] {
             for zone in try await database.allRecordZones().filter({ $0.zoneID.zoneName.hasPrefix("vloh-") }) {
                 if shared {
+                    let group = GroupID(zone: zone.zoneID.zoneName, owner: zone.zoneID.ownerName, shared: true)
+                    try await removeFromSchedule(user, group: group, anonymize: true)
                     let records = try await records(in: zone.zoneID, database: database)
                     for record in records where record["author"] as? String == user || record["user"] as? String == user { _ = try await database.deleteRecord(withID: record.recordID) }
                 }

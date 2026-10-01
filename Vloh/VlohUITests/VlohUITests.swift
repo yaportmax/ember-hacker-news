@@ -3,9 +3,12 @@ final class VlohUITests: XCTestCase {
     @MainActor func testGroupsChatScheduleAndSettings() throws {
         let app = launch()
         XCTAssertTrue(app.buttons["group-friends"].waitForExistence(timeout: 10)); attach(app, "Groups")
+        let groupsTab = app.buttons.matching(NSPredicate(format: "label == %@", "Groups")).firstMatch
+        XCTAssertGreaterThan(groupsTab.frame.midY, app.frame.height * 0.8, "Tabs should stay at the bottom on iPhone and iPad.")
         app.buttons["group-friends"].tap()
         XCTAssertTrue(app.buttons["record-day"].waitForExistence(timeout: 5)); attach(app, "Group")
         app.buttons["group-schedule"].tap()
+        XCTAssertFalse(app.buttons["capture-toggle"].exists, "The schedule must not open the recorder.")
         XCTAssertTrue(app.staticTexts["The next two weeks"].waitForExistence(timeout: 5)); attach(app, "Schedule")
         app.navigationBars.buttons.firstMatch.tap()
         app.buttons["group-chat"].tap()

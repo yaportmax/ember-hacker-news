@@ -30,8 +30,8 @@ struct FeedView: View {
                             Task { if let id = await store.recordingDraft(groupID: groupID), let value = store.archive.drafts.first(where: { $0.id == id }) { draft = DraftPresentation(id: id, draft: value) } }
                         } label: { Label("Record your day", systemImage: "plus").frame(maxWidth: .infinity, minHeight: 44) }
                         .buttonStyle(.borderedProminent).accessibilityIdentifier("record-day")
-                        NavigationLink { ScheduleView(group: group) } label: { Label("See the vlog schedule", systemImage: "calendar") }.accessibilityIdentifier("group-schedule")
                     }.padding(.vertical, 8)
+                    NavigationLink { ScheduleView(group: group) } label: { Label("See the vlog schedule", systemImage: "calendar") }.accessibilityIdentifier("group-schedule")
                 }
                 if let message = store.syncMessage { Section { Notice(text: message) { Task { await store.refresh() } } } }
                 if !store.online { Section { Label("Offline. Your drafts are saved on this iPhone.", systemImage: "wifi.slash").font(.subheadline).foregroundStyle(.secondary) } }
@@ -91,7 +91,7 @@ struct FeedView: View {
         .refreshable { await store.refresh() }
         .sheet(isPresented: $create) { CreateGroupView() }
         .sheet(item: $draft) { DraftView(initial: $0.draft, startsRecording: true) }
-        .sheet(item: $share) { value in CloudShareView(share: value.share, title: value.group.name, onError: { store.error = $0 }, onClose: { Task { await store.refresh() } }) }
+        .sheet(item: $share) { value in CloudShareView(share: value.share, title: value.group.name, onError: { store.error = $0 }, onClose: { Task { await store.sharingChanged(value.group) } }) }
     }
     private func invite(_ group: VlohGroup) {
         inviting = true

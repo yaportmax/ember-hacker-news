@@ -18,6 +18,7 @@ struct RootView: View {
                     RecordHubView().tabItem { Label("Record", systemImage: "record.circle") }.tag(1)
                     NavigationStack { SettingsView() }.tabItem { Label("Settings", systemImage: "gearshape") }.tag(2)
                 }
+                .environment(\.horizontalSizeClass, .compact)
             }
         }
         .preferredColorScheme(appearance == "dark" ? .dark : appearance == "light" ? .light : nil)

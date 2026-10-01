@@ -54,7 +54,7 @@ struct GroupSettingsView: View {
             }
         }.navigationTitle("Manage group").navigationBarTitleDisplayMode(.inline)
         .toolbar { if group?.id.shared == false { EditButton() } }
-        .sheet(item: $share) { value in CloudShareView(share: value.share, title: value.group.name, onError: { error = $0 }, onClose: { Task { await store.refresh() } }) }
+        .sheet(item: $share) { value in CloudShareView(share: value.share, title: value.group.name, onError: { error = $0 }, onClose: { Task { await store.sharingChanged(value.group) } }) }
         .confirmationDialog(groupID.shared ? "Leave this group? Your posted vlogs remain." : "Delete this group and all its vlogs for everyone?", isPresented: $leave, titleVisibility: .visible) {
             Button(groupID.shared ? "Leave group" : "Delete group", role: .destructive) { Task { await store.leaveGroup(groupID) } }
         }

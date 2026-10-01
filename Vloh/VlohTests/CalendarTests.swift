@@ -35,6 +35,29 @@ final class CalendarTests: XCTestCase {
         XCTAssertEqual(Rotation.member(for: group, members: members, date: today)?.id, "max")
         XCTAssertEqual(Rotation.member(for: group, members: members, date: tomorrow)?.id, "sam")
     }
+    func testDepartedMemberDoesNotReassignToday() {
+        var group = group
+        let today = date("2026-09-30T07:00:00Z")
+        group.orders = [VlogOrder(effectiveDay: today, members: ["sam", "max"])]
+        let members = [Member(id: "max", group: group.id, name: "Max", joinedAt: .distantPast)]
+        XCTAssertNil(Rotation.member(for: group, members: members, date: today))
+        XCTAssertEqual(Rotation.member(for: group, members: members, date: date("2026-10-01T07:00:00Z"))?.id, "max")
+    }
+    func testNewMemberDoesNotEnterAnExistingCycle() {
+        var group = group
+        let first = date("2026-09-30T07:00:00Z")
+        group.orders = [VlogOrder(effectiveDay: first, members: ["max", "sam"])]
+        let members = [Member(id: "max", group: group.id, name: "Max", joinedAt: .distantPast), Member(id: "sam", group: group.id, name: "Sam", joinedAt: first), Member(id: "other", group: group.id, name: "New friend", joinedAt: first.addingTimeInterval(1))]
+        XCTAssertEqual(Rotation.member(for: group, members: members, date: date("2026-10-02T07:00:00Z"))?.id, "max")
+    }
+    func testLegacyVlogConsumesItsDayOnlyInItsGroup() {
+        let day = date("2026-09-30T07:00:00Z")
+        let vlog = Vlog(id: "legacy", group: group.id, authorID: "max", authorName: "Max", caption: "", createdAt: date("2026-09-30T21:00:00Z"), duration: 10)
+        XCTAssertTrue(VlogCalendar.hasVlog([vlog], on: day, in: group))
+        XCTAssertFalse(VlogCalendar.hasVlog([vlog], on: date("2026-10-01T07:00:00Z"), in: group))
+        var other = group; other.id.zone = "other"
+        XCTAssertFalse(VlogCalendar.hasVlog([vlog], on: day, in: other))
+    }
     func testOnlyScheduledMemberAndOrderChangeKeepsYesterday() throws {
         var group = group
         let members = [Member(id: "max", group: group.id, name: "Max", joinedAt: .distantPast), Member(id: "sam", group: group.id, name: "Sam", joinedAt: .now)]

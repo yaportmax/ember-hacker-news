@@ -18,6 +18,9 @@ enum VlogCalendar {
         let end = calendar.date(byAdding: .day, value: 2, to: first)!
         return now >= first && now < end
     }
+    static func hasVlog(_ vlogs: [Vlog], on date: Date, in group: VlohGroup) -> Bool {
+        vlogs.contains { $0.group == group.id && key($0.vlogDay ?? $0.createdAt, in: group) == key(date, in: group) }
+    }
     static func permits(_ clip: Clip, day: Date, in group: VlohGroup) -> Bool {
         guard let filmed = clip.filmedAt else { return false }
         let window = window(for: day, in: group)

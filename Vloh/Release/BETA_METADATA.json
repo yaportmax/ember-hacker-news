@@ -1,0 +1,16 @@
+{
+  "locale": "en-US",
+  "description": "Vloh is a private daily vlog app for friends. Each group has its own chat, vlog history, member list and daily vlogger schedule. Record several moments without leaving the camera, trim and reorder clips, and share one vlog on your assigned day. Filming is eligible from 2 AM on the vlog day through 8 AM the following day, in the group's time zone. You may post on the vlog day or the next calendar day. New order changes begin tomorrow. Group owners manage names, photos, invitations and the vlogger order. Accounts use native Apple sign-in and iCloud storage. Profile settings include a name, photo, sign-out and data deletion.",
+  "feedbackEmail": "yaportmax@gmail.com",
+  "privacyPolicyUrl": "https://github.com/yaportmax/ember-hacker-news/blob/vloh/native/Vloh/Release/PRIVACY.md",
+  "reviewNotes": "A signed-in personal iCloud account is required for CloudKit private group sharing. Reviewers should use their own Apple authorization and iCloud account, create a new group, and use a second reviewer account to check invitations and chat. No access to the developer's private friend group is necessary. The initial group owner is scheduled for the first day. Filming is available from 2 AM that day until 8 AM the next day in the group's time zone. Imports require an original creation date inside that window. Tap Record to open continuous capture, stop to save a clip automatically, then record again. Tap Review for the visual trim editor. Open a posted vlog for native full-screen playback. Settings contains account/profile, privacy policy, community rules and deletion. Video and message action menus contain reporting/blocking; owners can delete content and remove participants through native CloudKit sharing controls. Initial playback uses downloaded CloudKit assets, with 720p exports, preloading and local caching. There are no ads, purchases, tracking SDKs or public anonymous feeds. Native-only Apple authorization deletion uses the documented manual revocation fallback and must be resolved against current Apple new-account token guidance before submission.",
+  "submissionReady": false,
+  "pending": [
+    "Updated native unit, iPhone and iPad UI tests plus device Release build must pass.",
+    "Deploy new CloudKit schema fields and VlohProfile to Production.",
+    "Resolve new-account Apple token validation/revocation handling.",
+    "Complete live iPhone camera/audio and two-account CloudKit acceptance.",
+    "Verify App Store Connect review-contact phone, privacy and age questionnaire against actual implementation.",
+    "Upload updated signed build and verify processing and internal tester availability."
+  ]
+}

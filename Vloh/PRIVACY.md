@@ -1,29 +1,10 @@
-# Vloh privacy
+# Vloh privacy policy
+Updated October 1, 2026. Vloh is provided by Max Yaport. Contact: [yaportmax@gmail.com](mailto:yaportmax@gmail.com).
 
-Last updated: September 30, 2026.
+Vloh stores your display name, optional profile photo, group memberships, videos, captions, reactions, and messages in Apple's CloudKit private/shared databases. An Apple sign-in identifier is stored in your private profile. We do not store your Apple password or collect location, contacts, advertising identifiers, or the contents of your photo library. Draft clips and editing information stay on your device until you post.
 
-Vloh is a private video and chat app for small groups of friends. It uses Apple iCloud and CloudKit. It does not create a separate password account, read your contacts, show advertising, or include third-party analytics.
+Your private group's invited members can view, contribute to, and export its shared content. Sharing is not an end-to-end encryption claim. Camera and microphone access is requested for recording; photo import uses Apple's picker and accesses only the media you select. No advertising or analytics SDKs, tracking, or sale of data are included. Apple provides iCloud storage under [Apple's privacy policy](https://www.apple.com/legal/privacy/).
 
-## What the app stores
+Data remains until you delete it or the owning group is deleted. Apple controls its backup retention. Delete vlogs from their actions menu and drafts from Record. Settings → Your account → Delete Vloh account and data removes your private profile, local drafts, playback cache, contributions to joined groups, and all groups you own. Other members' exported copies cannot be recalled. Your Apple account is unaffected. You can revoke camera and microphone access in iOS Settings. You can remove Vloh's Apple sign-in connection in your Apple account's Sign in with Apple settings.
 
-Your chosen display name, group membership, published videos and thumbnails, captions, messages, replies, reactions, and publishing dates are stored in the group's private CloudKit space. CloudKit supplies an account identifier to associate your contributions with your iCloud account. Vloh does not receive your Apple Account password.
-
-Drafts and their original clips are stored on your device. Publishing sends an exported video, thumbnail, and caption to your group. The app caches downloaded videos and thumbnails on your device for playback.
-
-The Photos picker gives Vloh the videos you select. Camera and microphone access is requested when you choose to record. Vloh does not browse your full photo library or contacts.
-
-## Who can access published content
-
-The group owner and invited participants can view and contribute to the group's shared CloudKit space. Vloh does not publish your videos to a public feed. Invited participants can download or export copies. Groups are intended for people you trust.
-
-Apple provides the hosting, account authentication, and sharing infrastructure. Apple's privacy policies and iCloud terms apply to those services. TestFlight can collect testing and crash information under Apple's TestFlight terms; Vloh does not add its own analytics service.
-
-## Removal and retention
-
-You can delete your drafts from Drafts and delete your own published vlogs from a video's actions menu. Deleting a published vlog removes its video record from the group. Previously exported copies held by other participants cannot be removed by Vloh. Related messages and replies are separate records and may remain in the group's CloudKit space.
-
-The group owner can manage or revoke invitations using Apple's sharing sheet. Revoking an invitation removes that person's ongoing access; it does not delete content they contributed or copies they already exported. Removing the app removes its local drafts and cache, but does not automatically remove published CloudKit content.
-
-## Contact
-
-Report a Vloh issue through [the project support page](https://github.com/yaportmax/ember-hacker-news/issues). Please do not include passwords or private group videos in a public issue.
+Reports are sent only when you submit them in Mail. You can review the report and choose whether to attach video evidence before sending. Reports include identifiers and the explanation you provide; they are used for support and moderation and retained only as needed to resolve the issue. Do not include passwords or unrelated sensitive information. For access, deletion, or privacy questions, contact the address above.
