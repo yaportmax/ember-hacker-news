@@ -63,7 +63,7 @@ struct GroupSettingsView: View {
             let members = store.archive.members.filter { $0.group == groupID }.sorted { $0.joinedAt < $1.joinedAt }
             let latest = group.orders?.max(by: { $0.effectiveDay < $1.effectiveDay })?.members ?? members.map(\.id)
             order = latest.compactMap { id in members.first { $0.id == id } } + members.filter { !latest.contains($0.id) }
-            photoURL = try? await store.cloud.groupPhoto(groupID, destination: store.groupPhotoURL(groupID))
+            if !store.usesPreviewData { photoURL = try? await store.cloud.groupPhoto(groupID, destination: store.groupPhotoURL(groupID)) }
         }
         .onChange(of: photo) { _, item in
             guard let item, let group else { return }; busy = true

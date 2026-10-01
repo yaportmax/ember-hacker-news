@@ -29,6 +29,7 @@ final class AppStore {
     private var uploadTask: Task<Void, Never>?
     private let monitor = NWPathMonitor()
     private var fixture = false
+    var usesPreviewData: Bool { fixture }
     private var storageHealthy = true
     init() {
         let manager = FileManager.default
@@ -86,6 +87,10 @@ final class AppStore {
         guard activeUpload == nil, !syncing else { error = "Wait for uploads and refresh to finish, then try again."; return }
         do {
             if !fixture { try await cloud.deleteAccount(user: user) }
+            for task in assetTasks.values { task.cancel() }
+            for task in assetTasks.values { _ = try? await task.value }
+            assetTasks.removeAll()
+            await media.clearCache()
             for draft in archive.drafts { await media.cleanup(draft) }
             for file in try FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil) { try FileManager.default.removeItem(at: file) }
             archive = Archive(); selectedGroup = nil; blockedAuthors = []; hiddenContent = []; accountDeleted = true
@@ -137,7 +142,7 @@ final class AppStore {
             archive.members = snapshot.members; archive.vlogs = snapshot.vlogs
             archive.replies = snapshot.replies; archive.reactions = snapshot.reactions
             if let selectedGroup, !archive.groups.contains(where: { $0.id == selectedGroup }) { self.selectedGroup = archive.groups.first?.id }
-            for group in archive.groups where !name.isEmpty && !archive.members.contains(where: { $0.group == group.id && $0.id == account }) {
+            for group in archive.groups where !name.isEmpty && (!archive.members.contains(where: { $0.group == group.id && $0.id == account }) || group.orders?.max(by: { $0.effectiveDay < $1.effectiveDay })?.members.contains(account) == false) {
                 try await cloud.join(group: group.id, user: account, name: name)
             }
             syncMessage = nil
@@ -215,7 +220,7 @@ final class AppStore {
         do {
             guard try await cloud.identity() == user else { throw VlohError.message("Switch back to your original iCloud account to upload these drafts.") }
         } catch { syncMessage = error.localizedDescription; return }
-        while online, let draft = archive.drafts.first(where: { $0.phase == .queued }) {
+        while online, !signedOut, let draft = archive.drafts.first(where: { $0.phase == .queued }) {
             activeUpload = draft.id
             let background = UIApplication.shared.beginBackgroundTask(withName: "Vloh upload") { [weak self] in
                 Task { @MainActor in self?.uploadTask?.cancel() }
@@ -283,7 +288,8 @@ final class AppStore {
             do {
                 if archive.drafts[index].clips.contains(where: { $0.sourceCapture == url.lastPathComponent }) { try FileManager.default.removeItem(at: url); continue }
                 let clip = try await media.importClip(from: url)
-                archive.drafts[index].clips.append(clip); archive.drafts[index].invalidateExport()
+                guard let current = archive.drafts.firstIndex(where: { $0.id == id && $0.canEdit }) else { await media.cleanupClip(clip); continue }
+                archive.drafts[current].clips.append(clip); archive.drafts[current].invalidateExport()
                 try await persist(); try FileManager.default.removeItem(at: url)
             } catch { syncMessage = "An interrupted recording is kept on this iPhone. " + error.localizedDescription }
         }
@@ -325,6 +331,7 @@ final class AppStore {
     }
     #if DEBUG
     private func seedFixture() {
+        signedOut = false
         archive.name = "Max"; archive.accountID = "max"
         let id = GroupID(zone: "friends", owner: "test", shared: false)
         let group = VlohGroup(id: id, name: "The buddies", createdAt: Calendar.current.startOfDay(for: .now), rotation: true, timeZone: "America/Los_Angeles")

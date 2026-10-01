@@ -30,6 +30,8 @@ actor CloudService {
         record["createdAt"] = group.createdAt as CKRecordValue
         record["rotation"] = (rotation ? 1 : 0) as CKRecordValue
         record["timeZone"] = group.timeZone as CKRecordValue
+        let founder = try await identity()
+        record["schedule"] = try JSONEncoder().encode([VlogOrder(effectiveDay: VlogCalendar.day(group.createdAt, in: group), members: [founder])]) as CKRecordValue
         _ = try await database(id).save(record)
         return group
     }
@@ -43,6 +45,28 @@ actor CloudService {
         if let photo { record["photo"] = CKAsset(fileURL: photo) }
         if record["joinedAt"] == nil { record["joinedAt"] = Date.now as CKRecordValue }
         _ = try await database(group).save(record)
+        try await addToSchedule(user, group: group)
+    }
+    private func addToSchedule(_ user: String, group: GroupID) async throws {
+        // Re-read after a conflict so concurrent invitations retain both members.
+        for attempt in 0..<3 {
+        let groupRecord = try await database(group).record(for: recordID("group", group))
+        let value = decodeGroup(groupRecord, group)
+        var orders = value.orders ?? []
+        if !orders.isEmpty {
+            let latest = orders.max(by: { $0.effectiveDay < $1.effectiveDay })!
+            if !latest.members.contains(user) {
+                let calendar = VlogCalendar.calendar(for: value)
+                let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: .now))!
+                orders.removeAll { $0.effectiveDay >= tomorrow }
+                orders.append(VlogOrder(effectiveDay: tomorrow, members: latest.members + [user]))
+                groupRecord["schedule"] = try JSONEncoder().encode(orders) as CKRecordValue
+                do { _ = try await database(group).save(groupRecord) }
+                catch let error as CKError where error.code == .serverRecordChanged && attempt < 2 { continue }
+            }
+        }
+        return
+        }
     }
     func post(_ draft: Draft, author: String, name: String, video: URL, poster: URL) async throws -> Vlog {
         let records = try await records(in: zoneID(draft.group), database: database(draft.group))
@@ -224,4 +248,3 @@ private final class RecordCollector: @unchecked Sendable {
     func fail(_ value: Error) { lock.lock(); defer { lock.unlock() }; error = value }
     func result() -> Result<[CKRecord], Error> { lock.lock(); defer { lock.unlock() }; return error.map { .failure($0) } ?? .success(records) }
 }
-

@@ -27,6 +27,14 @@ final class CalendarTests: XCTestCase {
         XCTAssertEqual(window.start, date("2026-11-01T10:00:00Z"))
         XCTAssertEqual(window.end, date("2026-11-02T16:00:00Z"))
     }
+    func testNewMemberDoesNotChangeCurrentOrder() {
+        var group = group
+        let today = date("2026-09-30T07:00:00Z"), tomorrow = date("2026-10-01T07:00:00Z")
+        group.orders = [VlogOrder(effectiveDay: today, members: ["max"]), VlogOrder(effectiveDay: tomorrow, members: ["sam", "max"])]
+        let members = [Member(id: "max", group: group.id, name: "Max", joinedAt: .distantPast), Member(id: "sam", group: group.id, name: "Sam", joinedAt: today)]
+        XCTAssertEqual(Rotation.member(for: group, members: members, date: today)?.id, "max")
+        XCTAssertEqual(Rotation.member(for: group, members: members, date: tomorrow)?.id, "sam")
+    }
     func testOnlyScheduledMemberAndOrderChangeKeepsYesterday() throws {
         var group = group
         let members = [Member(id: "max", group: group.id, name: "Max", joinedAt: .distantPast), Member(id: "sam", group: group.id, name: "Sam", joinedAt: .now)]

@@ -133,6 +133,7 @@ actor MediaService {
         return frames
     }
     func cleanupClip(_ clip: Clip) { try? FileManager.default.removeItem(at: root.appendingPathComponent("Clips/" + clip.filename)) }
+    func clearCache() { try? FileManager.default.removeItem(at: cache) }
     func clipURL(_ clip: Clip) -> URL { root.appendingPathComponent("Clips/" + clip.filename) }
     func exportURL(_ name: String) -> URL { root.appendingPathComponent("Exports/" + name) }
     func cachedURL(_ vlog: Vlog, poster: Bool = false) -> URL {

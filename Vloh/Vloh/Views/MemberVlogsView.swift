@@ -17,7 +17,7 @@ struct GroupPicture: View {
     var size: CGFloat = 48
     @Environment(AppStore.self) private var store
     @State private var url: URL?
-    var body: some View { ProfileImage(name: group.name, url: url, size: size).id(store.photoRevision).task(id: group.id) { let cached = store.groupPhotoURL(group.id); if FileManager.default.fileExists(atPath: cached.path) { url = cached }; if let fresh = try? await store.cloud.groupPhoto(group.id, destination: cached) { url = nil; url = fresh } } }
+    var body: some View { ProfileImage(name: group.name, url: url, size: size).id(store.photoRevision).task(id: group.id) { guard !store.usesPreviewData else { return }; let cached = store.groupPhotoURL(group.id); if FileManager.default.fileExists(atPath: cached.path) { url = cached }; if let fresh = try? await store.cloud.groupPhoto(group.id, destination: cached) { url = nil; url = fresh } } }
 }
 struct MemberPicture: View {
     let member: Member
@@ -27,7 +27,7 @@ struct MemberPicture: View {
     var body: some View {
         ProfileImage(name: member.name, url: member.id == store.user ? store.profilePhotoURL : url, size: size).id(member.id == store.user ? store.photoRevision.uuidString : member.id)
             .task(id: member.id) {
-                guard member.id != store.user else { return }
+                guard !store.usesPreviewData, member.id != store.user else { return }
                 let key = Data((member.group.key + "/" + member.id).utf8).base64EncodedString().replacingOccurrences(of: "/", with: "_")
                 let file = store.root.appendingPathComponent("MemberPhotos/" + key + ".jpg")
                 if FileManager.default.fileExists(atPath: file.path) { url = file }

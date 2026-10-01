@@ -18,9 +18,8 @@ for kind in ["iPhone", "iPad"]:
     device = matches[0]
     result = build / f"{kind}.xcresult"
     try:
-        run(["xcodebuild", "test", "-project", "Vloh.xcodeproj", "-scheme", "Vloh", "-destination", "platform=iOS Simulator,id=" + device["udid"], "-parallel-testing-enabled", "NO", "-resultBundlePath", result, "CODE_SIGNING_ALLOWED=NO"])
+        run(["xcodebuild", "test", "-project", "Vloh.xcodeproj", "-scheme", "Vloh", "-destination", "platform=iOS Simulator,id=" + device["udid"], "-parallel-testing-enabled", "NO", "-resultBundlePath", result, "CODE_SIGNING_ALLOWED=YES", "CODE_SIGN_IDENTITY=-", "CODE_SIGNING_REQUIRED=NO"])
     finally:
         run(["xcrun", "xcresulttool", "export", "attachments", "--path", result, "--output-path", build / f"screenshots-{kind}"])
 run(["xcodebuild", "build", "-project", "Vloh.xcodeproj", "-scheme", "Vloh", "-configuration", "Release", "-destination", "generic/platform=iOS", "CODE_SIGNING_ALLOWED=NO"])
 (build / "validation.json").write_text(json.dumps({"native_tests": "passed", "device_release_build": "passed", "signed": False}))
-
