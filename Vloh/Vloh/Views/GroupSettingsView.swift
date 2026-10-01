@@ -18,7 +18,7 @@ struct GroupSettingsView: View {
             if let group {
                 Section {
                     HStack {
-                        ProfileImage(name: group.name, url: photoURL, size: 72)
+                        ProfileImage(name: group.name, url: photoURL, size: 72).id(store.photoRevision)
                         if !group.id.shared { PhotosPicker(selection: $photo, matching: .images) { Text("Change group photo") }.disabled(busy) }
                         else { Text(group.name).font(.headline) }
                     }
@@ -43,7 +43,7 @@ struct GroupSettingsView: View {
                 }
                 Section("Members") {
                     ForEach(store.archive.members.filter { $0.group == groupID }) { member in
-                        HStack { MemberPicture(member: member); NavigationLink(member.name) { MemberVlogsView(member: member) }; Spacer(); if member.id != store.user { Button(store.isBlocked(member.id) ? "Unblock" : "Block") { store.toggleBlock(member.id) }.font(.caption) } }
+                        GroupMemberRow(member: member)
                     }
                     if !group.id.shared { Button("Manage invitations and remove members") { busy = true; Task { do { share = SharePresentation(share: try await store.cloud.share(group), group: group) } catch { self.error = error.localizedDescription }; busy = false } }.disabled(busy) }
                 }
@@ -71,8 +71,8 @@ struct GroupSettingsView: View {
                 guard let data = try await item.loadTransferable(type: Data.self) else { throw VlohError.message("Couldn't open that photo.") }
                 let url = store.groupPhotoURL(groupID); try await PhotoService.save(data, to: url)
                 try await store.cloud.updateGroup(group, name: nil, order: nil, photo: url)
-                photoURL = nil; photoURL = url
-            } catch { error = error.localizedDescription }; busy = false; photo = nil }
+                photoURL = url; store.photoRevision = UUID()
+            } catch { self.error = error.localizedDescription }; busy = false; photo = nil }
         }
     }
 }
@@ -85,5 +85,17 @@ struct ProfileImage: View {
         Group { if let image { Image(uiImage: image).resizable().scaledToFill() } else { Text(String(name.prefix(1)).uppercased()).font(.system(size: size * 0.4, weight: .semibold)).foregroundStyle(.orange).frame(maxWidth: .infinity, maxHeight: .infinity).background(.orange.opacity(0.13)) } }
             .frame(width: size, height: size).clipShape(Circle()).accessibilityHidden(true)
             .task(id: url) { image = url.flatMap { UIImage(contentsOfFile: $0.path) } }
+    }
+}
+
+struct GroupMemberRow: View {
+    let member: Member
+    @Environment(AppStore.self) private var store
+    var body: some View {
+        HStack {
+            MemberPicture(member: member)
+            NavigationLink { MemberVlogsView(member: member) } label: { Text(member.name) }
+            if member.id != store.user { Button(store.isBlocked(member.id) ? "Unblock" : "Block") { store.toggleBlock(member.id) }.font(.caption).buttonStyle(.borderless) }
+        }
     }
 }

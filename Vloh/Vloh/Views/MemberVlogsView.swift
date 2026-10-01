@@ -17,7 +17,7 @@ struct GroupPicture: View {
     var size: CGFloat = 48
     @Environment(AppStore.self) private var store
     @State private var url: URL?
-    var body: some View { ProfileImage(name: group.name, url: url, size: size).task(id: group.id) { let cached = store.groupPhotoURL(group.id); if FileManager.default.fileExists(atPath: cached.path) { url = cached }; if let fresh = try? await store.cloud.groupPhoto(group.id, destination: cached) { url = nil; url = fresh } } }
+    var body: some View { ProfileImage(name: group.name, url: url, size: size).id(store.photoRevision).task(id: group.id) { let cached = store.groupPhotoURL(group.id); if FileManager.default.fileExists(atPath: cached.path) { url = cached }; if let fresh = try? await store.cloud.groupPhoto(group.id, destination: cached) { url = nil; url = fresh } } }
 }
 struct MemberPicture: View {
     let member: Member

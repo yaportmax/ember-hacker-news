@@ -33,6 +33,7 @@ struct RecordHubView: View {
     @Environment(AppStore.self) private var store
     @State private var draft: DraftPresentation?
     @State private var create = false
+    @State private var deleting: Draft?
     @State private var opening = false
     @State private var vlogDay: Date?
     var body: some View {
@@ -54,7 +55,7 @@ struct RecordHubView: View {
                             if item.canEdit {
                                 Button { draft = DraftPresentation(id: item.id, draft: item) } label: {
                                     HStack { Image(systemName: "film.stack"); VStack(alignment: .leading) { Text(item.caption.isEmpty ? "Your day" : item.caption).font(.headline); Text("\(item.clips.count) clips · \(Duration.seconds(item.totalDuration).formatted(.time(pattern: .minuteSecond)))").font(.caption).foregroundStyle(.secondary) }; Spacer(); Image(systemName: "chevron.right") }
-                                }
+                                }.swipeActions { Button("Delete draft", role: .destructive) { deleting = item } }
                             } else { UploadRow(draft: item) }
                         }
                     }
@@ -65,6 +66,7 @@ struct RecordHubView: View {
             }.navigationTitle("Record")
             .sheet(isPresented: $create) { CreateGroupView() }
             .sheet(item: $draft) { item in DraftView(initial: item.draft, startsRecording: opening).onDisappear { opening = false } }
+            .confirmationDialog("Delete this draft and its clips?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible) { Button("Delete draft", role: .destructive) { if let deleting { Task { await store.removeDraft(deleting) } }; deleting = nil } }
             .task { await openCamera() }
         }
     }

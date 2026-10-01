@@ -23,6 +23,9 @@ final class MediaTests: XCTestCase {
         first.start = 0.2; first.end = 0.8
         second.start = 0.1; second.end = 0.6
         let draft = Draft(group: GroupID(zone: "test", owner: "test", shared: false), clips: [first, second])
+        let thumbnails = try await service.timeline(first)
+        XCTAssertEqual(thumbnails.count, 10)
+        XCTAssertNotNil(CGImageSourceCreateWithData(thumbnails[0] as CFData, nil))
         let exported = try await service.export(draft)
         let videoURL = await service.exportURL(exported.video)
         let posterURL = await service.exportURL(exported.poster)

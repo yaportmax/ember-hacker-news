@@ -20,7 +20,7 @@ struct AccountView: View {
             Section("Sign-in") {
                 if store.archive.appleUserID != nil { Label("Connected with Apple", systemImage: "checkmark.shield") }
                 else {
-                    SignInWithAppleButton(.signUp, onRequest: { request in request.requestedScopes = [.fullName, .email] }, onCompletion: { result in
+                    SignInWithAppleButton(.signUp, onRequest: { request in request.requestedScopes = [.fullName] }, onCompletion: { result in
                         switch result {
                         case .success(let authorization):
                             guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else { return }
@@ -44,7 +44,7 @@ struct AccountView: View {
         .onAppear { name = store.name }
         .onChange(of: photo) { _, item in
             guard let item else { return }; busy = true
-            Task { do { guard let data = try await item.loadTransferable(type: Data.self) else { throw VlohError.message("Couldn't open that photo.") }; try await store.saveProfilePhoto(data); photoRevision = UUID() } catch { error = error.localizedDescription }; busy = false; photo = nil }
+            Task { do { guard let data = try await item.loadTransferable(type: Data.self) else { throw VlohError.message("Couldn't open that photo.") }; try await store.saveProfilePhoto(data); photoRevision = UUID() } catch { self.error = error.localizedDescription }; busy = false; photo = nil }
         }
         .confirmationDialog("Delete your Vloh account and all owned groups permanently?", isPresented: $deleting, titleVisibility: .visible) {
             Button("Delete account and data", role: .destructive) { busy = true; Task { await store.deleteAccount(); busy = false; name = store.name; photoRevision = UUID() } }

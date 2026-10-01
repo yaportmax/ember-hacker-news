@@ -55,6 +55,11 @@ final class AppStore {
     var profilePhotoURL: URL? { archive.hasProfilePhoto == true ? root.appendingPathComponent("ProfilePhoto.jpg") : nil }
     func groupPhotoURL(_ group: GroupID) -> URL { let key = Data(group.key.utf8).base64EncodedString().replacingOccurrences(of: "/", with: "_"); return root.appendingPathComponent("GroupPhotos/" + key + ".jpg") }
     func connectApple(user: String, displayName: String) async {
+        error = nil
+        if !fixture {
+            do { let iCloudUser = try await cloud.identity(); if let original = archive.accountID, original != iCloudUser { throw VlohError.message("Use the iCloud account linked to this Vloh profile.") }; archive.accountID = iCloudUser }
+            catch { self.error = error.localizedDescription; return }
+        }
         guard archive.appleUserID == nil || archive.appleUserID == user else { error = "Use the Apple account already linked to this Vloh profile."; return }
         archive.appleUserID = user
         let value = displayName.isEmpty ? name : displayName
