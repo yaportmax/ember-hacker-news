@@ -58,15 +58,18 @@ def main():
         bundles=api('bundleIds?'+urlencode({'filter[identifier]':BUNDLE}))['data']
         if len(bundles)!=1: raise RuntimeError('Vloh bundle ID registration is missing.')
         bundle_id=bundles[0]['id']
+        capabilities=api('bundleIds/'+bundle_id+'/bundleIdCapabilities')['data']
+        if not any(c['attributes']['capabilityType']=='APPLE_ID_AUTH' for c in capabilities):
+            api('bundleIdCapabilities','POST',{'data':{'type':'bundleIdCapabilities','attributes':{'capabilityType':'APPLE_ID_AUTH'},'relationships':{'bundleId':{'data':{'type':'bundleIds','id':bundle_id}}}}})
         certificates=api('certificates?limit=200')['data']
         matching=[item for item in certificates if base64.b64decode(item['attributes']['certificateContent']) in certificate_data]
         if not matching: raise RuntimeError('Existing Apple Distribution certificate could not be resolved.')
         certificate_id=matching[0]['id']
-        profiles=api('profiles?'+urlencode({'filter[name]':'Vloh App Store','include':'bundleId','limit':'200'}))['data']
+        profiles=api('profiles?'+urlencode({'filter[name]':'Vloh App Store v2','include':'bundleId','limit':'200'}))['data']
         profiles=[p for p in profiles if p['attributes']['profileState']=='ACTIVE' and p['relationships']['bundleId']['data']['id']==bundle_id]
         if profiles: profile=profiles[0]
         else:
-            profile=api('profiles','POST',{'data':{'type':'profiles','attributes':{'name':'Vloh App Store','profileType':'IOS_APP_STORE'},'relationships':{'bundleId':{'data':{'type':'bundleIds','id':bundle_id}},'certificates':{'data':[{'type':'certificates','id':certificate_id}]}}}})['data']
+            profile=api('profiles','POST',{'data':{'type':'profiles','attributes':{'name':'Vloh App Store v2','profileType':'IOS_APP_STORE'},'relationships':{'bundleId':{'data':{'type':'bundleIds','id':bundle_id}},'certificates':{'data':[{'type':'certificates','id':certificate_id}]}}}})['data']
         uuid=profile['attributes']['uuid']
         checked_profile=temp/'vloh.mobileprovision'; checked_profile.write_bytes(base64.b64decode(profile['attributes']['profileContent'])); checked_profile.chmod(0o600)
         decoded=plistlib.loads(subprocess.check_output(['security','cms','-D','-i',str(checked_profile)]))

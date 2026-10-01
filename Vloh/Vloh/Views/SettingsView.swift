@@ -8,8 +8,7 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section("You") {
-                TextField("Your name", text: $name).textContentType(.givenName)
-                Button(saving ? "Saving…" : "Save name") { saving = true; Task { await store.saveName(name); saving = false } }.disabled(saving || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || name == store.name)
+                NavigationLink { AccountView() } label: { HStack(spacing: 16) { ProfileImage(name: store.name, url: store.profilePhotoURL).id(store.photoRevision); VStack(alignment: .leading) { Text(store.name).font(.headline); Text("Account and profile").font(.caption).foregroundStyle(.secondary) } } }.accessibilityIdentifier("account-settings")
             }
             Section("Appearance") {
                 Picker("Theme", selection: $appearance) { Text("System").tag("system"); Text("Light").tag("light"); Text("Dark").tag("dark") }
@@ -26,12 +25,15 @@ struct SettingsView: View {
                 Button("Open iPhone Settings") { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } }
             }
             Section("Your privacy") {
+                NavigationLink("Privacy policy") { PolicyView(kind: .privacy) }
+                NavigationLink("Community rules") { PolicyView(kind: .community) }
+                NavigationLink("Blocked members") { BlockedMembersView() }
                 Text("Vloh stores your group's videos and messages in Apple's iCloud. Only people invited to your group can access them. Drafts stay on this iPhone until you post.")
                 Text("Invited members can download or export videos. Sharing a group gives members permission to contribute to its shared space.")
                 Text("No ads or analytics. Vloh never reads your contacts or photo library; you choose the clips to import.")
             }
             Section("Vloh") {
-                LabeledContent("Version", value: "1.0.0")
+                LabeledContent("Version", value: (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0") + " (" + (Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "") + ")")
                 Text("Small moments. Your people.").foregroundStyle(.secondary)
                 Link("Support and feedback", destination: URL(string: "https://github.com/yaportmax/ember-hacker-news/issues")!)
             }

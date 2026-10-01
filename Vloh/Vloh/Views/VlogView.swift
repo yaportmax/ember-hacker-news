@@ -5,6 +5,7 @@ struct VlogView: View {
     let vlog: Vlog
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @State private var fullscreen = false
     @State private var url: URL?
     @State private var error: String?
     @State private var loading = false
@@ -12,11 +13,17 @@ struct VlogView: View {
     @State private var sending = false
     @FocusState private var composing: Bool
     @State private var deleting = false
-    var replies: [Reply] { store.archive.replies.filter { $0.group == vlog.group && $0.vlogID == vlog.id }.sorted { $0.createdAt < $1.createdAt } }
+    @State private var report: ReportTarget?
+    var replies: [Reply] { store.archive.replies.filter { $0.group == vlog.group && $0.vlogID == vlog.id && !store.isBlocked($0.authorID) && !store.hiddenContent.contains($0.group.key + "/" + $0.id) }.sorted { $0.createdAt < $1.createdAt } }
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 20) {
-                if let url { FilePlayer(url: url).aspectRatio(9 / 16, contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 16)) }
+                if let url {
+                    ZStack(alignment: .bottomTrailing) {
+                        FilePlayer(url: url).aspectRatio(9.0 / 16.0, contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 16))
+                        Button { fullscreen = true } label: { Image(systemName: "arrow.up.left.and.arrow.down.right").foregroundStyle(.white).frame(width: 48, height: 48).background(.black.opacity(0.6), in: Circle()) }.padding().accessibilityLabel("Watch full screen").accessibilityIdentifier("open-fullscreen")
+                    }
+                }
                 else if let error { Notice(text: error) { Task { await load() } } }
                 else { ProgressView("Loading video…").frame(maxWidth: .infinity, minHeight: 300) }
                 HStack { Avatar(name: vlog.authorName); VStack(alignment: .leading) { Text(vlog.authorName).font(.headline); Text(vlog.createdAt.formatted(date: .abbreviated, time: .shortened)).font(.caption).foregroundStyle(.secondary) } }
@@ -50,25 +57,31 @@ struct VlogView: View {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
                     if let url { ShareLink(item: url) { Label("Export video", systemImage: "square.and.arrow.up") } }
-                    if vlog.authorID == store.user { Button("Delete vlog", systemImage: "trash", role: .destructive) { deleting = true } }
+                    Button("Report content", systemImage: "flag") { report = ReportTarget(contentID: vlog.id, group: vlog.group, author: vlog.authorID, text: vlog.caption, video: url) }
+                    if vlog.authorID != store.user { Button("Block member", systemImage: "person.crop.circle.badge.xmark") { store.toggleBlock(vlog.authorID); dismiss() } }
+                    if vlog.authorID == store.user || !vlog.group.shared { Button("Delete vlog", systemImage: "trash", role: .destructive) { deleting = true } }
                 } label: { Image(systemName: "ellipsis.circle").frame(width: 44, height: 44) }.accessibilityLabel("Video actions")
             }
         }
         .confirmationDialog("Delete this vlog for everyone?", isPresented: $deleting, titleVisibility: .visible) {
             Button("Delete vlog", role: .destructive) { Task { await store.delete(vlog); if store.error == nil { dismiss() } } }
         }
+        .sheet(item: $report) { ReportView(target: $0) }
+        .fullScreenCover(isPresented: $fullscreen) { if let url { FullscreenPlayer(url: url) } }
         .task { await load() }
         .refreshable { await store.refresh() }
     }
     private func load() async {
         guard !loading else { return }; loading = true; error = nil
         defer { loading = false }
-        do { url = try await store.file(for: vlog); store.archive.seen.insert(vlog.id); store.save() }
+        do { url = try await store.file(for: vlog); fullscreen = true; store.archive.seen.insert(vlog.id); store.save() }
         catch { self.error = error.localizedDescription }
     }
 }
 struct ReplyRow: View {
     let reply: Reply
+    @Environment(AppStore.self) private var store
+    @State private var report: ReportTarget?
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Avatar(name: reply.authorName)
@@ -77,6 +90,11 @@ struct ReplyRow: View {
                 Text(reply.text).textSelection(.enabled)
             }.frame(maxWidth: .infinity, alignment: .leading)
         }.padding(.vertical, 6)
+        .contextMenu {
+            Button("Report content", systemImage: "flag") { report = ReportTarget(contentID: reply.id, group: reply.group, author: reply.authorID, text: reply.text) }
+            Button("Hide message", systemImage: "eye.slash") { store.hide(reply.id, group: reply.group) }
+            if reply.authorID != store.user { Button("Block member", systemImage: "person.crop.circle.badge.xmark") { store.toggleBlock(reply.authorID) } }
+        }.sheet(item: $report) { ReportView(target: $0) }
     }
 }
 struct ChatView: View {
@@ -84,7 +102,7 @@ struct ChatView: View {
     @State private var text = ""
     @State private var sending = false
     @FocusState private var composing: Bool
-    private var replies: [Reply] { store.archive.replies.filter { $0.group == store.group?.id && $0.vlogID == nil }.sorted { $0.createdAt < $1.createdAt } }
+    private var replies: [Reply] { store.archive.replies.filter { $0.group == store.group?.id && $0.vlogID == nil && !store.isBlocked($0.authorID) && !store.hiddenContent.contains($0.group.key + "/" + $0.id) }.sorted { $0.createdAt < $1.createdAt } }
     var body: some View {
         Group {
             if store.group == nil { ContentUnavailableView("Your group goes here", systemImage: "bubble.left.and.bubble.right", description: Text("Create or join a group from Today.")) }

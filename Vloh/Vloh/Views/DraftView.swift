@@ -9,7 +9,7 @@ struct DraftsView: View {
     @State private var deleting: Draft?
     var body: some View {
         List {
-            if store.archive.drafts.isEmpty { ContentUnavailableView("A day in the making", systemImage: "square.and.pencil", description: Text("Start recording from Today. Your clips stay here until you're ready to share.")) }
+            if store.archive.drafts.isEmpty { ContentUnavailableView("A day in the making", systemImage: "square.and.pencil", description: Text("Open the Record tab. Your clips stay here until you're ready to share.")) }
             ForEach(store.archive.drafts.sorted { $0.createdAt > $1.createdAt }) { draft in
                 VStack(alignment: .leading, spacing: 8) {
                     Button {
@@ -40,6 +40,7 @@ struct DraftsView: View {
 }
 struct DraftView: View {
     let initial: Draft
+    let startsRecording: Bool
     @State private var draft: Draft
     @State private var selection: [PhotosPickerItem] = []
     @State private var camera = false
@@ -50,12 +51,13 @@ struct DraftView: View {
     @State private var trimming: Clip?
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
-    init(initial: Draft) { self.initial = initial; _draft = State(initialValue: initial) }
+    init(initial: Draft, startsRecording: Bool = false) { self.initial = initial; self.startsRecording = startsRecording; _draft = State(initialValue: initial) }
     private var busy: Bool { importing || saving }
     var body: some View {
         NavigationStack {
             List {
                 Section {
+                    if let group = store.archive.groups.first(where: { $0.id == draft.group }), let day = draft.vlogDay { Label("Vlog for " + day.formatted(.dateTime.weekday(.wide).month().day().timeZone(VlogCalendar.calendar(for: group).timeZone)), systemImage: "calendar").font(.headline) }
                     TextField("A caption for your day", text: $draft.caption, axis: .vertical).lineLimit(2...4)
                         .onChange(of: draft.caption) { _, value in if value.count > 500 { draft.caption = String(value.prefix(500)) } }
                     Label("\(draft.clips.count) clips · \(Duration.seconds(draft.totalDuration).formatted(.time(pattern: .minuteSecond)))", systemImage: "film.stack").font(.subheadline).foregroundStyle(.secondary)
@@ -107,9 +109,10 @@ struct DraftView: View {
                 ToolbarItem(placement: .primaryAction) { EditButton().disabled(busy) }
             }
             .interactiveDismissDisabled(busy)
+            .task { if startsRecording { camera = true } }
             .onChange(of: draft) { _, value in Task { do { try await store.update(value) } catch { self.error = error.localizedDescription } } }
             .onChange(of: selection) { _, items in Task { await importMovies(items) } }
-            .fullScreenCover(isPresented: $camera) { CameraView { url in Task { await addClip(url) } }.ignoresSafeArea() }
+            .fullScreenCover(isPresented: $camera) { RecordingView(draft: $draft, onClip: { url in try await append(url); try? FileManager.default.removeItem(at: url) }) }
             .sheet(isPresented: Binding(get: { preview != nil }, set: { if !$0 { preview = nil } })) {
                 if let preview { NavigationStack { FilePlayer(url: preview).navigationTitle("Clip preview").toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { self.preview = nil } } } } }
             }
@@ -118,13 +121,7 @@ struct DraftView: View {
             } }
         }
     }
-    private func openCamera() async {
-        guard UIImagePickerController.isSourceTypeAvailable(.camera) else { error = "The camera is available on a physical iPhone. You can import videos here."; return }
-        let video = await AVCaptureDevice.requestAccess(for: .video)
-        let audio = await AVCaptureDevice.requestAccess(for: .audio)
-        guard video && audio else { error = "Allow Camera and Microphone for Vloh in iPhone Settings to record. You can still import videos."; return }
-        camera = true
-    }
+    private func openCamera() async { camera = true }
     private func importMovies(_ items: [PhotosPickerItem]) async {
         guard !items.isEmpty, !importing else { return }
         importing = true; defer { importing = false; selection = [] }
@@ -143,33 +140,9 @@ struct DraftView: View {
     private func append(_ url: URL) async throws {
         guard draft.clips.count < Limits.clips else { throw VlohError.message("This draft already has 40 clips.") }
         let clip = try await store.media.importClip(from: url)
+        guard let day = draft.vlogDay, let group = store.archive.groups.first(where: { $0.id == draft.group }), VlogCalendar.permits(clip, day: day, in: group) else { await store.media.cleanupClip(clip); throw VlohError.message("This clip needs a filming date within your vlog's window: 2 AM on your day through 8 AM the next day.") }
         draft.clips.append(clip); draft.invalidateExport()
         try await store.update(draft)
         if draft.totalDuration > Limits.vlogSeconds { error = "Your vlog is over 10 minutes. Trim or remove a clip before sharing." }
-    }
-}
-struct TrimView: View {
-    @State var clip: Clip
-    let onSave: (Clip) -> Void
-    @Environment(AppStore.self) private var store
-    @Environment(\.dismiss) private var dismiss
-    @State private var url: URL?
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 24) {
-                if let url { FilePlayer(url: url) }
-                VStack(alignment: .leading) {
-                    Text("Start: \(clip.start, specifier: "%.1f") seconds")
-                    Slider(value: $clip.start, in: 0...max(0, clip.end - 0.1), step: 0.1).accessibilityLabel("Clip start")
-                    Text("End: \(clip.end, specifier: "%.1f") seconds")
-                    Slider(value: $clip.end, in: min(clip.duration, clip.start + 0.1)...clip.duration, step: 0.1).accessibilityLabel("Clip end")
-                }.padding()
-                Spacer()
-            }.navigationTitle("Trim clip").navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                    ToolbarItem(placement: .confirmationAction) { Button("Save") { onSave(clip); dismiss() }.disabled(clip.length <= 0) }
-                }.task { url = await store.media.clipURL(clip) }
-        }
     }
 }

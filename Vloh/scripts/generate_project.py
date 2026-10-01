@@ -94,7 +94,7 @@ for name, kind in (("Vloh", "application"), ("VlohTests", "bundle.unit-test"), (
     products.append(product)
     paths = sorted((ROOT / name).rglob("*.swift"))
     sources = build_phase(name + ":sources", "PBXSourcesBuildPhase", paths)
-    resources = build_phase(name + ":resources", "PBXResourcesBuildPhase", [ROOT / "Vloh/Resources/Assets.xcassets", ROOT / "Vloh/Resources/PrivacyInfo.xcprivacy"] if app else [])
+    resources = build_phase(name + ":resources", "PBXResourcesBuildPhase", [ROOT / "Vloh/Resources/Assets.xcassets", ROOT / "Vloh/Resources/PrivacyInfo.xcprivacy", ROOT / "Vloh/Resources/Preview.mp4"] if app else [])
     frameworks = build_phase(name + ":frameworks", "PBXFrameworksBuildPhase", [])
     settings = {"PRODUCT_NAME": "$(TARGET_NAME)", "CODE_SIGN_STYLE": "Automatic", "TARGETED_DEVICE_FAMILY": "1,2", "SUPPORTED_PLATFORMS": "iphoneos iphonesimulator", "SUPPORTS_MACCATALYST": "NO", "SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD": "NO", "GENERATE_INFOPLIST_FILE": "YES"}
     if app:

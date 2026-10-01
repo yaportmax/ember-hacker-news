@@ -33,31 +33,41 @@ actor CloudService {
         _ = try await database(id).save(record)
         return group
     }
-    func join(group: GroupID, user: String, name: String) async throws {
+    func join(group: GroupID, user: String, name: String, photo: URL? = nil) async throws {
         let id = recordID("member-" + user, group)
         let record: CKRecord
         do { record = try await database(group).record(for: id) }
         catch let error as CKError where error.code == .unknownItem { record = CKRecord(recordType: "VlohMember", recordID: id) }
         record["user"] = user as CKRecordValue
         record["name"] = name as CKRecordValue
+        if let photo { record["photo"] = CKAsset(fileURL: photo) }
         if record["joinedAt"] == nil { record["joinedAt"] = Date.now as CKRecordValue }
         _ = try await database(group).save(record)
     }
     func post(_ draft: Draft, author: String, name: String, video: URL, poster: URL) async throws -> Vlog {
-        let id = recordID(draft.id.uuidString, draft.group)
-        // Stable record ID makes retries idempotent, including an uncertain network response.
+        let records = try await records(in: zoneID(draft.group), database: database(draft.group))
+        guard let groupRecord = records.first(where: { $0.recordType == "VlohGroup" }) else { throw VlohError.message("This group is unavailable.") }
+        let group = decodeGroup(groupRecord, draft.group)
+        let members = records.filter { $0.recordType == "VlohMember" }.map { Member(id: $0["user"] as? String ?? "", group: draft.group, name: $0["name"] as? String ?? "Friend", joinedAt: $0["joinedAt"] as? Date ?? .distantPast) }
+        try VlogCalendar.validate(draft, group: group, members: members, user: author, now: .now)
+        let id = recordID("day-" + VlogCalendar.key(draft.vlogDay!, in: group), draft.group)
+        // One atomic record ID per group/day also makes retries idempotent.
         do {
             let existing = try await database(draft.group).record(for: id)
+            guard existing["author"] as? String == author, existing["draftID"] as? String == draft.id.uuidString else { throw VlohError.message("This day already has its vlog.") }
             return vlog(existing, draft.group)
         } catch let error as CKError where error.code == .unknownItem { }
         let record = CKRecord(recordType: "VlohVlog", recordID: id)
         record["author"] = author as CKRecordValue; record["authorName"] = name as CKRecordValue
         record["caption"] = draft.caption as CKRecordValue; record["createdAt"] = Date.now as CKRecordValue
+        record["vlogDay"] = draft.vlogDay! as CKRecordValue
+        record["draftID"] = draft.id.uuidString as CKRecordValue
         record["duration"] = draft.totalDuration as CKRecordValue
         record["video"] = CKAsset(fileURL: video); record["poster"] = CKAsset(fileURL: poster)
         do { return vlog(try await database(draft.group).save(record), draft.group) }
         catch let error as CKError where error.code == .serverRecordChanged {
             guard let server = error.serverRecord else { throw error }
+            guard server["draftID"] as? String == draft.id.uuidString else { throw VlohError.message("This day already has its vlog.") }
             return vlog(server, draft.group)
         }
     }
@@ -105,7 +115,7 @@ actor CloudService {
                 for record in try await records(in: zone.zoneID, database: db) {
                     switch record.recordType {
                     case "VlohGroup":
-                        snapshot.groups.append(VlohGroup(id: group, name: record["name"] as? String ?? "Friends", createdAt: record["createdAt"] as? Date ?? .distantPast, rotation: (record["rotation"] as? Int ?? 0) == 1, timeZone: record["timeZone"] as? String ?? "UTC"))
+                        snapshot.groups.append(decodeGroup(record, group))
                     case "VlohMember":
                         snapshot.members.append(Member(id: record["user"] as? String ?? record.recordID.recordName, group: group, name: record["name"] as? String ?? "Friend", joinedAt: record["joinedAt"] as? Date ?? .distantPast))
                     case "VlohVlog": snapshot.vlogs.append(vlog(record, group))
@@ -120,13 +130,69 @@ actor CloudService {
         }
         return snapshot
     }
+    private func decodeGroup(_ record: CKRecord, _ id: GroupID) -> VlohGroup {
+        let orders = (record["schedule"] as? Data).flatMap { try? JSONDecoder().decode([VlogOrder].self, from: $0) }
+        return VlohGroup(id: id, name: record["name"] as? String ?? "Friends", createdAt: record["createdAt"] as? Date ?? .distantPast, rotation: true, timeZone: record["timeZone"] as? String ?? "UTC", orders: orders)
+    }
+    func updateGroup(_ group: VlohGroup, name: String?, order: [String]?, photo: URL?) async throws {
+        guard !group.id.shared else { throw VlohError.message("Only the group owner can change group settings.") }
+        let record = try await database(group.id).record(for: recordID("group", group.id))
+        if let name { record["name"] = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(60)) as CKRecordValue }
+        if let photo { record["photo"] = CKAsset(fileURL: photo) }
+        if let order {
+            var orders = (record["schedule"] as? Data).flatMap { try? JSONDecoder().decode([VlogOrder].self, from: $0) } ?? []
+            let calendar = VlogCalendar.calendar(for: group)
+            let effective = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: .now))!
+            orders.removeAll { $0.effectiveDay >= effective }; orders.append(VlogOrder(effectiveDay: effective, members: order))
+            record["schedule"] = try JSONEncoder().encode(orders) as CKRecordValue
+        }
+        _ = try await database(group.id).save(record)
+    }
+    func groupPhoto(_ group: GroupID, destination: URL) async throws -> URL { try await photo(record: recordID("group", group), database: database(group), destination: destination) }
+    func memberPhoto(_ user: String, group: GroupID, destination: URL) async throws -> URL { try await photo(record: recordID("member-" + user, group), database: database(group), destination: destination) }
+    private func photo(record id: CKRecord.ID, database: CKDatabase, destination: URL) async throws -> URL {
+        let records = try await database.records(for: [id], desiredKeys: ["photo"])
+        guard let result = records[id], let asset = try result.get()["photo"] as? CKAsset, let file = asset.fileURL else { throw VlohError.message("No photo set.") }
+        try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let data = try Data(contentsOf: file); try data.write(to: destination, options: .atomic)
+        return destination
+    }
+    func saveProfile(name: String, appleUser: String?, photo: URL?) async throws {
+        let id = CKRecord.ID(recordName: "vloh-profile")
+        let record: CKRecord
+        do { record = try await container.privateCloudDatabase.record(for: id) } catch let error as CKError where error.code == .unknownItem { record = CKRecord(recordType: "VlohProfile", recordID: id) }
+        record["name"] = name as CKRecordValue
+        if let appleUser { record["appleUser"] = appleUser as CKRecordValue }
+        if let photo { record["photo"] = CKAsset(fileURL: photo) }
+        _ = try await container.privateCloudDatabase.save(record)
+    }
+    func profile(destination: URL) async throws -> (String, String?, Bool) {
+        let record = try await container.privateCloudDatabase.record(for: CKRecord.ID(recordName: "vloh-profile"))
+        var hasPhoto = false
+        if let asset = record["photo"] as? CKAsset, let file = asset.fileURL { try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true); try Data(contentsOf: file).write(to: destination, options: .atomic); hasPhoto = true }
+        return (record["name"] as? String ?? "", record["appleUser"] as? String, hasPhoto)
+    }
+    func leave(_ group: GroupID) async throws { _ = try await database(group).deleteRecordZone(withID: zoneID(group)) }
+    func deleteAccount(user: String) async throws {
+        // Fresh zone metadata ensures deletion covers every current membership.
+        for (database, shared) in [(container.privateCloudDatabase, false), (container.sharedCloudDatabase, true)] {
+            for zone in try await database.allRecordZones().filter({ $0.zoneID.zoneName.hasPrefix("vloh-") }) {
+                if shared {
+                    let records = try await records(in: zone.zoneID, database: database)
+                    for record in records where record["author"] as? String == user || record["user"] as? String == user { _ = try await database.deleteRecord(withID: record.recordID) }
+                }
+                _ = try await database.deleteRecordZone(withID: zone.zoneID)
+            }
+        }
+        do { _ = try await container.privateCloudDatabase.deleteRecord(withID: CKRecord.ID(recordName: "vloh-profile")) } catch let error as CKError where error.code == .unknownItem { }
+    }
     private func vlog(_ record: CKRecord, _ group: GroupID) -> Vlog {
-        Vlog(id: record.recordID.recordName, group: group, authorID: record["author"] as? String ?? "", authorName: record["authorName"] as? String ?? "Friend", caption: record["caption"] as? String ?? "", createdAt: record["createdAt"] as? Date ?? .distantPast, duration: record["duration"] as? Double ?? 0)
+        Vlog(id: record.recordID.recordName, group: group, authorID: record["author"] as? String ?? "", authorName: record["authorName"] as? String ?? "Friend", caption: record["caption"] as? String ?? "", createdAt: record["createdAt"] as? Date ?? .distantPast, duration: record["duration"] as? Double ?? 0, vlogDay: record["vlogDay"] as? Date)
     }
     private func records(in zone: CKRecordZone.ID, database: CKDatabase) async throws -> [CKRecord] {
         let collector = RecordCollector()
         let config = CKFetchRecordZoneChangesOperation.ZoneConfiguration()
-        config.desiredKeys = ["name", "createdAt", "rotation", "timeZone", "user", "joinedAt", "author", "authorName", "caption", "duration", "vlog", "text", "emoji"]
+        config.desiredKeys = ["name", "createdAt", "rotation", "timeZone", "user", "joinedAt", "author", "authorName", "caption", "duration", "vlog", "text", "emoji", "vlogDay", "draftID", "schedule"]
         let operation = CKFetchRecordZoneChangesOperation(recordZoneIDs: [zone], configurationsByRecordZoneID: [zone: config])
         operation.fetchAllChanges = true
         return try await withCheckedThrowingContinuation { continuation in

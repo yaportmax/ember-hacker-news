@@ -35,6 +35,7 @@ jobs:
           retention-days: 5
 
   testflight:
+    if: false # Enable after new CloudKit schema has been deployed.
     needs: ios
     runs-on: macos-26
     timeout-minutes: 35

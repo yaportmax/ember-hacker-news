@@ -25,10 +25,10 @@ struct FeedView: View {
                                 .font(.subheadline).foregroundStyle(.secondary)
                         } else { Text("A little bit of everyone's day.").foregroundStyle(.secondary) }
                         Button {
-                            Task { if let id = await store.newDraft(), let value = store.archive.drafts.first(where: { $0.id == id }) { draft = DraftPresentation(id: id, draft: value) } }
+                            Task { if let id = await store.recordingDraft(), let value = store.archive.drafts.first(where: { $0.id == id }) { draft = DraftPresentation(id: id, draft: value) } }
                         } label: { Label("Record your day", systemImage: "plus").frame(maxWidth: .infinity, minHeight: 44) }
                         .buttonStyle(.borderedProminent).accessibilityIdentifier("record-day")
-                        if group.rotation { Text("Anyone can post, anytime.").font(.caption).foregroundStyle(.secondary) }
+                        NavigationLink { ScheduleView(group: group) } label: { Label("See the vlog schedule", systemImage: "calendar") }.accessibilityIdentifier("group-schedule")
                     }.padding(.vertical, 8)
                 }
                 if let message = store.syncMessage { Section { Notice(text: message) { Task { await store.refresh() } } } }
@@ -60,7 +60,7 @@ struct FeedView: View {
                                 Poster(vlog: vlog)
                                 if !vlog.caption.isEmpty { Text(vlog.caption).font(.body).lineLimit(3) }
                             }.padding(.vertical, 12)
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(.plain).accessibilityIdentifier("vlog-" + vlog.id)
                     }
                 } header: { Text("The latest") }
             } else {
@@ -72,10 +72,12 @@ struct FeedView: View {
             }
         }
         .listStyle(.plain).frame(maxWidth: 700).frame(maxWidth: .infinity)
-        .navigationTitle("Vloh").searchable(text: $search, prompt: "Find a friend or a memory")
+        .navigationTitle(store.group?.name ?? "Vloh").searchable(text: $search, prompt: "Find a friend or a memory")
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) { NavigationLink { ChatView() } label: { Label("Chat", systemImage: "bubble.left.and.bubble.right") }.accessibilityIdentifier("group-chat") }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    if let group = store.group { NavigationLink("Manage group") { GroupSettingsView(groupID: group.id) }; NavigationLink("Vlog schedule") { ScheduleView(group: group) } }
                     ForEach(store.archive.groups) { group in Button(group.name) { store.selectedGroup = group.id } }
                     Button("Create group", systemImage: "plus") { create = true }
                     if let group = store.group, !group.id.shared {
@@ -84,9 +86,10 @@ struct FeedView: View {
                 } label: { Image(systemName: inviting ? "hourglass" : "person.2").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("Groups and invitations")
             }
         }
+        .task(id: store.group?.id) { await store.preloadRecentVideos() }
         .refreshable { await store.refresh() }
         .sheet(isPresented: $create) { CreateGroupView() }
-        .sheet(item: $draft) { DraftView(initial: $0.draft) }
+        .sheet(item: $draft) { DraftView(initial: $0.draft, startsRecording: true) }
         .sheet(item: $share) { value in CloudShareView(share: value.share, title: value.group.name, onError: { store.error = $0 }, onClose: { Task { await store.refresh() } }) }
     }
     private func invite(_ group: VlohGroup) {
@@ -109,8 +112,8 @@ struct CreateGroupView: View {
             Form {
                 Section("Your group") { TextField("Group name", text: $name).accessibilityIdentifier("group-name") }
                 Section {
-                    Toggle("Take turns each day", isOn: $rotation)
-                } footer: { Text("A gentle nudge to share your day. Everyone can still post whenever they want.") }
+                    Label("One daily vlog, taking turns", systemImage: "calendar")
+                } footer: { Text("Each day has one scheduled person. Post that day or the next day.") }
                 Section { Button {
                     busy = true
                     Task { await store.createGroup(name: String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(60)), rotation: rotation); busy = false; if store.error == nil { dismiss() } }

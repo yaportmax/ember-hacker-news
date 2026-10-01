@@ -11,10 +11,9 @@ struct RootView: View {
             if !store.ready { ProgressView("Opening Vloh") }
             else {
                 TabView(selection: $tab) {
-                    NavigationStack { FeedView() }.tabItem { Label("Today", systemImage: "play.rectangle") }.tag(0)
-                    NavigationStack { DraftsView() }.tabItem { Label("Drafts", systemImage: "square.and.pencil") }.tag(1)
-                    NavigationStack { ChatView() }.tabItem { Label("Chat", systemImage: "bubble.left.and.bubble.right") }.tag(2)
-                    NavigationStack { SettingsView() }.tabItem { Label("Settings", systemImage: "gearshape") }.tag(3)
+                    NavigationStack { GroupsView() }.tabItem { Label("Groups", systemImage: "person.2.fill") }.tag(0)
+                    RecordHubView().tabItem { Label("Record", systemImage: "record.circle") }.tag(1)
+                    NavigationStack { SettingsView() }.tabItem { Label("Settings", systemImage: "gearshape") }.tag(2)
                 }
             }
         }
@@ -23,6 +22,7 @@ struct RootView: View {
             Button("OK") { store.error = nil }
         } message: { Text(store.error ?? "") }
         .sheet(isPresented: $onboarding) { WelcomeView().interactiveDismissDisabled() }
+        .onChange(of: store.accountDeleted) { _, deleted in if deleted { onboarding = true; store.accountDeleted = false } }
         .onChange(of: store.ready) { _, ready in if ready && store.name.isEmpty { onboarding = true } }
     }
 }

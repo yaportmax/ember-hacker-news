@@ -63,35 +63,12 @@ struct CloudShareView: UIViewControllerRepresentable {
         func cloudSharingControllerDidStopSharing(_ csc: UICloudSharingController) { parent.onClose() }
     }
 }
-struct CameraView: UIViewControllerRepresentable {
-    let onRecord: (URL) -> Void
-    @Environment(\.dismiss) private var dismiss
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.sourceType = .camera; picker.mediaTypes = ["public.movie"]
-        picker.cameraCaptureMode = .video; picker.videoQuality = .typeHigh
-        picker.videoMaximumDuration = 120
-        picker.delegate = context.coordinator
-        return picker
-    }
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
-    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        let parent: CameraView
-        init(_ parent: CameraView) { self.parent = parent }
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) { parent.dismiss() }
-        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-            if let url = info[.mediaURL] as? URL { parent.onRecord(url) }
-            parent.dismiss()
-        }
-    }
-}
 struct FilePlayer: View {
     let url: URL
     @State private var player: AVPlayer?
     @Environment(\.scenePhase) private var phase
     var body: some View {
-        VideoPlayer(player: player).frame(minHeight: 240)
+        Group { if let player { PlayerSurface(player: player) } else { ProgressView() } }.frame(minHeight: 240)
             .onAppear {
                 try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
                 try? AVAudioSession.sharedInstance().setActive(true)

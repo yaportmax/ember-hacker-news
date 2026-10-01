@@ -31,7 +31,16 @@ actor MediaService {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let name = UUID().uuidString + ".mov"
         try FileManager.default.copyItem(at: source, to: directory.appendingPathComponent(name))
-        return Clip(filename: name, duration: duration, end: duration)
+        var filmedAt: Date?
+        if source.deletingLastPathComponent().lastPathComponent == "PendingCapture", let millis = Double(source.deletingPathExtension().lastPathComponent.split(separator: "-").last ?? "") { filmedAt = Date(timeIntervalSince1970: millis / 1000) }
+        else {
+            let metadata = try await asset.load(.commonMetadata)
+            if let item = metadata.first(where: { $0.commonKey == .commonKeyCreationDate }), let value = try await item.load(.stringValue) {
+                filmedAt = ISO8601DateFormatter().date(from: value)
+                if filmedAt == nil { let parser = ISO8601DateFormatter(); parser.formatOptions = [.withInternetDateTime, .withFractionalSeconds]; filmedAt = parser.date(from: value) }
+            }
+        }
+        return Clip(filename: name, duration: duration, end: duration, sourceCapture: source.deletingLastPathComponent().lastPathComponent == "PendingCapture" ? source.lastPathComponent : nil, filmedAt: filmedAt)
     }
     func export(_ draft: Draft) async throws -> (video: String, poster: String) {
         guard !draft.clips.isEmpty, draft.clips.count <= Limits.clips, draft.totalDuration <= Limits.vlogSeconds else {
@@ -81,7 +90,7 @@ actor MediaService {
         videoComposition.renderSize = canvas
         videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
         videoComposition.instructions = instructions
-        guard let session = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetHighestQuality) else {
+        guard let session = AVAssetExportSession(asset: composition, presetName: AVAssetExportPreset1280x720) else {
             throw VlohError.message("This video format couldn't be exported.")
         }
         session.videoComposition = videoComposition
@@ -109,6 +118,21 @@ actor MediaService {
         try Data(bytes: bytes, count: CFDataGetLength(data)).write(to: directory.appendingPathComponent(poster), options: .atomic)
         return (filename, poster)
     }
+    func timeline(_ clip: Clip) async throws -> [Data] {
+        let generator = AVAssetImageGenerator(asset: AVURLAsset(url: root.appendingPathComponent("Clips/" + clip.filename)))
+        generator.appliesPreferredTrackTransform = true; generator.maximumSize = CGSize(width: 100, height: 150)
+        var frames: [Data] = []
+        for index in 0..<10 {
+            try Task.checkCancellation()
+            let image = try await generator.image(at: CMTime(seconds: clip.duration * Double(index) / 10, preferredTimescale: 600)).image
+            let data = NSMutableData()
+            guard let target = CGImageDestinationCreateWithData(data, UTType.jpeg.identifier as CFString, 1, nil) else { continue }
+            CGImageDestinationAddImage(target, image, [kCGImageDestinationLossyCompressionQuality: 0.6] as CFDictionary)
+            if CGImageDestinationFinalize(target) { frames.append(data as Data) }
+        }
+        return frames
+    }
+    func cleanupClip(_ clip: Clip) { try? FileManager.default.removeItem(at: root.appendingPathComponent("Clips/" + clip.filename)) }
     func clipURL(_ clip: Clip) -> URL { root.appendingPathComponent("Clips/" + clip.filename) }
     func exportURL(_ name: String) -> URL { root.appendingPathComponent("Exports/" + name) }
     func cachedURL(_ vlog: Vlog, poster: Bool = false) -> URL {

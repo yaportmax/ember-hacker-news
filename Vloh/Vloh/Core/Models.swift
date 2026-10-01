@@ -12,6 +12,7 @@ struct VlohGroup: Codable, Identifiable, Equatable, Sendable {
     var createdAt: Date
     var rotation: Bool
     var timeZone: String
+    var orders: [VlogOrder]? = nil
 }
 struct Member: Codable, Identifiable, Equatable, Sendable {
     var id: String
@@ -25,6 +26,8 @@ struct Clip: Codable, Identifiable, Equatable, Sendable {
     var duration: Double
     var start: Double = 0
     var end: Double
+    var sourceCapture: String? = nil
+    var filmedAt: Date? = nil
     var length: Double { max(0, min(duration, end) - max(0, start)) }
 }
 enum UploadPhase: String, Codable, Sendable {
@@ -45,6 +48,7 @@ struct Draft: Codable, Identifiable, Equatable, Sendable {
     var caption: String = ""
     var createdAt: Date = .now
     var clips: [Clip] = []
+    var vlogDay: Date? = nil
     var phase: UploadPhase = .draft
     var exportedFile: String?
     var error: String?
@@ -60,6 +64,7 @@ struct Vlog: Codable, Identifiable, Equatable, Sendable {
     var caption: String
     var createdAt: Date
     var duration: Double
+    var vlogDay: Date? = nil
 }
 struct Reply: Codable, Identifiable, Equatable, Sendable {
     var id: String
@@ -80,6 +85,8 @@ struct Reaction: Codable, Identifiable, Equatable, Sendable {
 struct Archive: Codable, Sendable {
     var version = 1
     var accountID: String?
+    var appleUserID: String? = nil
+    var hasProfilePhoto: Bool? = nil
     var name = ""
     var groups: [VlohGroup] = []
     var members: [Member] = []
@@ -93,6 +100,7 @@ enum VlohError: LocalizedError {
     case message(String)
     var errorDescription: String? { if case let .message(text) = self { text } else { nil } }
 }
+struct VlogOrder: Codable, Equatable, Sendable { var effectiveDay: Date; var members: [String] }
 enum Rotation {
     static func member(for group: VlohGroup, members: [Member], date: Date) -> Member? {
         guard group.rotation else { return nil }
@@ -100,6 +108,13 @@ enum Rotation {
             $0.joinedAt == $1.joinedAt ? $0.id < $1.id : $0.joinedAt < $1.joinedAt
         }
         guard !people.isEmpty else { return nil }
+        if let order = group.orders?.filter({ $0.effectiveDay <= date }).max(by: { $0.effectiveDay < $1.effectiveDay }) {
+            let ids = order.members.filter { id in people.contains(where: { $0.id == id }) } + people.map(\.id).filter { !order.members.contains($0) }
+            guard !ids.isEmpty else { return nil }
+            let calendar = VlogCalendar.calendar(for: group)
+            let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: order.effectiveDay), to: calendar.startOfDay(for: date)).day ?? 0
+            return people.first { $0.id == ids[((days % ids.count) + ids.count) % ids.count] }
+        }
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: group.timeZone) ?? TimeZone(secondsFromGMT: 0)!
         let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: group.createdAt), to: calendar.startOfDay(for: date)).day ?? 0
