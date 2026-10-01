@@ -44,6 +44,30 @@ final class VlohUITests: XCTestCase {
         XCTAssertTrue(app.buttons["close-fullscreen"].waitForExistence(timeout: 10)); attach(app, "Full screen playback")
         app.buttons["close-fullscreen"].tap(); XCTAssertTrue(app.buttons["open-fullscreen"].waitForExistence(timeout: 5))
     }
+    @MainActor func testGroupManagementAndSeparateChats() throws {
+        let app = launch(); app.buttons["group-friends"].tap()
+        app.buttons["group-menu"].tap(); app.buttons["manage-group"].tap()
+        XCTAssertTrue(app.staticTexts["Vlogger order"].waitForExistence(timeout: 5)); attach(app, "Group management")
+        app.navigationBars.buttons.firstMatch.tap()
+        app.buttons["group-chat"].tap()
+        send("Only buddies", in: app)
+        app.buttons["dismiss-keyboard"].tap()
+        app.navigationBars.buttons.firstMatch.tap(); app.navigationBars.buttons.firstMatch.tap()
+        app.buttons["group-weekend"].tap(); app.buttons["group-chat"].tap()
+        XCTAssertFalse(app.staticTexts["Only buddies"].exists)
+        send("Only weekend", in: app)
+        app.buttons["dismiss-keyboard"].tap()
+        app.navigationBars.buttons.firstMatch.tap(); app.navigationBars.buttons.firstMatch.tap()
+        app.buttons["group-friends"].tap(); app.buttons["group-chat"].tap()
+        XCTAssertTrue(app.staticTexts["Only buddies"].exists)
+        XCTAssertFalse(app.staticTexts["Only weekend"].exists)
+    }
+    @MainActor private func send(_ message: String, in app: XCUIApplication) {
+        let field = app.descendants(matching: .any)["chat-message"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5)); field.tap(); field.typeText(message)
+        app.buttons["send-message"].tap()
+        XCTAssertTrue(app.staticTexts[message].waitForExistence(timeout: 5))
+    }
     @MainActor private func launch() -> XCUIApplication { let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch(); return app }
     @MainActor private func selectTab(_ title: String, in app: XCUIApplication) {
         let button = app.buttons.matching(NSPredicate(format: "label == %@", title)).firstMatch

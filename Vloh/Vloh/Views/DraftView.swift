@@ -57,7 +57,13 @@ struct DraftView: View {
         NavigationStack {
             List {
                 Section {
-                    if let group = store.archive.groups.first(where: { $0.id == draft.group }), let day = draft.vlogDay { Label("Vlog for " + VlogCalendar.label(day, in: group), systemImage: "calendar").font(.headline) }
+                    if let group = store.archive.groups.first(where: { $0.id == draft.group }) {
+                        if let day = draft.vlogDay { Label("Vlog for " + VlogCalendar.label(day, in: group), systemImage: "calendar").font(.headline) }
+                        else {
+                            Menu("Choose your vlog day") { ForEach(VlogCalendar.availableDays(for: store.user, group: group, members: store.archive.members, now: .now), id: \.self) { day in Button(VlogCalendar.label(day, in: group)) { draft.vlogDay = day } } }
+                            Text("Choose today or yesterday if you were scheduled. Older clips still need their original filming date.").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
                     TextField("A caption for your day", text: $draft.caption, axis: .vertical).lineLimit(2...4)
                         .onChange(of: draft.caption) { _, value in if value.count > 500 { draft.caption = String(value.prefix(500)) } }
                     Label("\(draft.clips.count) clips · \(Duration.seconds(draft.totalDuration).formatted(.time(pattern: .minuteSecond)))", systemImage: "film.stack").font(.subheadline).foregroundStyle(.secondary)
@@ -76,7 +82,7 @@ struct DraftView: View {
                         ForEach(Array(draft.clips.enumerated()), id: \.element.id) { index, clip in
                             HStack {
                                 Button { Task { preview = await store.media.clipURL(clip) } } label: {
-                                    Label("Clip \(index + 1)", systemImage: "play.circle").frame(minHeight: 44)
+                                    VStack(alignment: .leading) { Label("Clip \(index + 1)", systemImage: "play.circle"); if clip.filmedAt == nil { Text("Filming date unavailable").font(.caption).foregroundStyle(.secondary) } }.frame(minHeight: 44)
                                 }.buttonStyle(.borderless)
                                 Spacer()
                                 Text(Duration.seconds(clip.length).formatted(.time(pattern: .minuteSecond))).font(.caption.monospacedDigit())

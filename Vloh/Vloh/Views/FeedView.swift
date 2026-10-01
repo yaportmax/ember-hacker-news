@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct FeedView: View {
+    let groupID: GroupID
     @Environment(AppStore.self) private var store
     @State private var create = false
     @State private var draft: DraftPresentation?
@@ -8,15 +9,16 @@ struct FeedView: View {
     @State private var share: SharePresentation?
     @State private var search = ""
     @State private var filter = "All"
+    private var group: VlohGroup? { store.archive.groups.first { $0.id == groupID } }
     var filtered: [Vlog] {
-        store.groupVlogs.filter { vlog in
-            (filter != "Unwatched" || !store.archive.seen.contains(vlog.id)) &&
+        store.visibleVlogs(in: groupID).filter { vlog in
+            (filter != "Unwatched" || !store.archive.seen.contains(vlog.group.key + "/" + vlog.id)) &&
             (search.isEmpty || vlog.caption.localizedCaseInsensitiveContains(search) || vlog.authorName.localizedCaseInsensitiveContains(search))
         }
     }
     var body: some View {
         List {
-            if let group = store.group {
+            if let group {
                 Section {
                     VStack(alignment: .leading, spacing: 12) {
                         Text(group.name).font(.title2.bold())
@@ -25,7 +27,7 @@ struct FeedView: View {
                                 .font(.subheadline).foregroundStyle(.secondary)
                         } else { Text("A little bit of everyone's day.").foregroundStyle(.secondary) }
                         Button {
-                            Task { if let id = await store.recordingDraft(), let value = store.archive.drafts.first(where: { $0.id == id }) { draft = DraftPresentation(id: id, draft: value) } }
+                            Task { if let id = await store.recordingDraft(groupID: groupID), let value = store.archive.drafts.first(where: { $0.id == id }) { draft = DraftPresentation(id: id, draft: value) } }
                         } label: { Label("Record your day", systemImage: "plus").frame(maxWidth: .infinity, minHeight: 44) }
                         .buttonStyle(.borderedProminent).accessibilityIdentifier("record-day")
                         NavigationLink { ScheduleView(group: group) } label: { Label("See the vlog schedule", systemImage: "calendar") }.accessibilityIdentifier("group-schedule")
@@ -54,7 +56,7 @@ struct FeedView: View {
                                         Text(vlog.createdAt, style: .relative).font(.caption).foregroundStyle(.secondary)
                                     }
                                     Spacer()
-                                    if !store.archive.seen.contains(vlog.id) { Circle().fill(.orange).frame(width: 8, height: 8).accessibilityLabel("Unwatched") }
+                                    if !store.archive.seen.contains(vlog.group.key + "/" + vlog.id) { Circle().fill(.orange).frame(width: 8, height: 8).accessibilityLabel("Unwatched") }
                                     Text(Duration.seconds(vlog.duration).formatted(.time(pattern: .minuteSecond))).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                                 }
                                 Poster(vlog: vlog)
@@ -72,21 +74,20 @@ struct FeedView: View {
             }
         }
         .listStyle(.plain).frame(maxWidth: 700).frame(maxWidth: .infinity)
-        .navigationTitle(store.group?.name ?? "Vloh").searchable(text: $search, prompt: "Find a friend or a memory")
+        .navigationTitle(group?.name ?? "Vloh").searchable(text: $search, prompt: "Find a friend or a memory")
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) { NavigationLink { ChatView() } label: { Label("Chat", systemImage: "bubble.left.and.bubble.right") }.accessibilityIdentifier("group-chat") }
+            ToolbarItem(placement: .topBarLeading) { NavigationLink { ChatView(groupID: groupID) } label: { Label("Chat", systemImage: "bubble.left.and.bubble.right") }.accessibilityIdentifier("group-chat") }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    if let group = store.group { NavigationLink("Manage group") { GroupSettingsView(groupID: group.id) }; NavigationLink("Vlog schedule") { ScheduleView(group: group) } }
-                    ForEach(store.archive.groups) { group in Button(group.name) { store.selectedGroup = group.id } }
+                    if let group { NavigationLink("Manage group") { GroupSettingsView(groupID: group.id) }.accessibilityIdentifier("manage-group"); NavigationLink("Vlog schedule") { ScheduleView(group: group) } }
                     Button("Create group", systemImage: "plus") { create = true }
-                    if let group = store.group, !group.id.shared {
+                    if let group, !group.id.shared {
                         Button("Invite friends", systemImage: "person.badge.plus") { invite(group) }.disabled(inviting)
                     }
-                } label: { Image(systemName: inviting ? "hourglass" : "person.2").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("Groups and invitations")
+                } label: { Image(systemName: inviting ? "hourglass" : "person.2").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("Groups and invitations").accessibilityIdentifier("group-menu")
             }
         }
-        .task(id: store.group?.id) { await store.preloadRecentVideos() }
+        .task(id: groupID) { await store.preloadRecentVideos(groupID: groupID) }
         .refreshable { await store.refresh() }
         .sheet(isPresented: $create) { CreateGroupView() }
         .sheet(item: $draft) { DraftView(initial: $0.draft, startsRecording: true) }

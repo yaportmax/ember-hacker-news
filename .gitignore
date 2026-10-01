@@ -12,3 +12,5 @@ Release/validation.json
 Release/screenshots/
 __pycache__/
 *.pyc
+.env
+.env.*

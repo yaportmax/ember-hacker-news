@@ -1,6 +1,7 @@
 import SwiftUI
 import AVFoundation
 import UIKit
+import Combine
 
 @MainActor @Observable
 final class Recorder {
@@ -70,11 +71,12 @@ struct RecordingView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scene
     @State private var recorder = Recorder()
+    @State private var now = Date.now
     private var canFinish: Bool { !recorder.recording && !recorder.finishing && recorder.saving == 0 }
     private var recordingWindowRemaining: Double {
         guard let day = draft.vlogDay, let group = store.archive.groups.first(where: { $0.id == draft.group }) else { return 0 }
         let window = VlogCalendar.window(for: day, in: group)
-        return Date.now >= window.start ? max(0, window.end.timeIntervalSinceNow) : 0
+        return now >= window.start ? max(0, window.end.timeIntervalSince(now)) : 0
     }
     var body: some View {
         ZStack {
@@ -93,7 +95,7 @@ struct RecordingView: View {
                     Button { if canFinish { dismiss() } else { recorder.closeRequested = true; if recorder.recording { recorder.finishing = true; recorder.engine.stopRecording() } } } label: { Image(systemName: "xmark").frame(width: 48, height: 48).background(.black.opacity(0.45), in: Circle()) }.accessibilityLabel("Save and close camera").accessibilityIdentifier("close-camera")
                     Spacer()
                     VStack(spacing: 4) {
-                        Text(store.group?.name ?? "Your day").font(.headline)
+                        Text(store.archive.groups.first { $0.id == draft.group }?.name ?? "Your day").font(.headline)
                         Text("\(draft.clips.count) clips saved").font(.caption).accessibilityIdentifier("recorded-clip-count")
                     }.padding(12).background(.black.opacity(0.45), in: Capsule())
                     Spacer()
@@ -102,6 +104,10 @@ struct RecordingView: View {
                 Spacer()
                 if let message = recorder.error { Text(message).font(.subheadline).padding().background(.black.opacity(0.7), in: RoundedRectangle(cornerRadius: 16)).padding(.horizontal) }
                 VStack(spacing: 16) {
+                    if let day = draft.vlogDay, let group = store.archive.groups.first(where: { $0.id == draft.group }), recordingWindowRemaining <= 0 {
+                        let window = VlogCalendar.window(for: day, in: group)
+                        Text(now < window.start ? "Filming opens " + VlogCalendar.label(window.start, in: group, format: "EEE 'at' h:mm a") : "Filming has closed for this day. Review your saved clips to edit and share.").font(.subheadline).multilineTextAlignment(.center)
+                    }
                     TimelineView(.periodic(from: .now, by: 0.25)) { context in
                         let elapsed = recorder.startedAt.map { context.date.timeIntervalSince($0) } ?? 0
                         Text(recorder.recording ? "\(Duration.seconds(elapsed).formatted(.time(pattern: .minuteSecond)))" : "Tap to record your next moment")
@@ -121,6 +127,7 @@ struct RecordingView: View {
         }.foregroundStyle(.white)
         .interactiveDismissDisabled(!canFinish)
         .task { await recorder.prepare(onClip: onClip) }
+        .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { now = $0 }
         .onDisappear { recorder.engine.stop() }
         .onChange(of: canFinish) { _, value in if value && recorder.closeRequested { dismiss() } }
         .onChange(of: scene) { _, value in if value != .active { recorder.finishing = recorder.recording; recorder.engine.stopRecording() } }

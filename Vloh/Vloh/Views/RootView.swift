@@ -3,6 +3,7 @@ import AuthenticationServices
 
 struct RootView: View {
     @Environment(AppStore.self) private var store
+    @Environment(\.openURL) private var openURL
     @AppStorage("appearance") private var appearance = "system"
     @State private var tab = 0
     @State private var onboarding = false
@@ -23,6 +24,10 @@ struct RootView: View {
         .alert("Couldn't finish that", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) {
             Button("OK") { store.error = nil }
         } message: { Text(store.error ?? "") }
+        .alert("Your Vloh account was deleted", isPresented: Binding(get: { store.accountDeleted }, set: { store.accountDeleted = $0 })) {
+            Button("Apple authorization instructions") { openURL(URL(string: "https://support.apple.com/102571")!) }
+            Button("Done", role: .cancel) { }
+        } message: { Text("Your Vloh data has been removed. To remove Apple's authorization too, open iOS Settings → your name → Sign in with Apple → Vloh and stop using Sign in with Apple.") }
 
     }
 }
@@ -57,4 +62,3 @@ struct WelcomeView: View {
         }
     }
 }
-

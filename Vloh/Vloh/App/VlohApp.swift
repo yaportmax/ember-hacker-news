@@ -1,5 +1,6 @@
 import SwiftUI
 import CloudKit
+import AuthenticationServices
 
 extension Notification.Name { static let acceptedShare = Notification.Name("Vloh.acceptedShare") }
 final class AppDelegate: NSObject, UIApplicationDelegate {
@@ -29,6 +30,7 @@ struct VlohApp: App {
             RootView().environment(store).tint(.orange)
                 .task { await store.boot(); await consumeShare() }
                 .onReceive(NotificationCenter.default.publisher(for: .acceptedShare)) { _ in Task { await consumeShare() } }
+                .onReceive(NotificationCenter.default.publisher(for: ASAuthorizationAppleIDProvider.credentialRevokedNotification)) { _ in store.signOut() }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active { Task { await store.refresh(); store.startQueue() } }
                 }

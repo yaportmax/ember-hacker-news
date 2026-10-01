@@ -11,7 +11,7 @@ struct GroupsView: View {
             }
             ForEach(store.archive.groups) { group in
                 NavigationLink {
-                    FeedView().onAppear { store.selectedGroup = group.id }
+                    FeedView(groupID: group.id).onAppear { store.selectedGroup = group.id }
                 } label: {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack { GroupPicture(group: group, size: 48); Text(group.name).font(.title2.bold()); Spacer() }
@@ -45,10 +45,11 @@ struct RecordHubView: View {
                             ForEach(store.archive.groups) { group in Button(group.name) { store.selectedGroup = group.id } }
                         } label: { Label("Recording for \(group.name)", systemImage: "person.2").font(.headline).frame(minHeight: 44) }.accessibilityIdentifier("record-group-picker")
                         let days = VlogCalendar.availableDays(for: store.user, group: group, members: store.archive.members, now: .now)
+                        if days.isEmpty { NavigationLink { ScheduleView(group: group) } label: { Label("See your next vlog day", systemImage: "calendar") } }
                         if days.count > 1 {
                             Menu { ForEach(days, id: \.self) { day in Button(VlogCalendar.label(day, in: group)) { vlogDay = day } } } label: { Label("Vlog day: " + VlogCalendar.label(vlogDay ?? days.first!, in: group), systemImage: "calendar") }
                         }
-                        Button { Task { await openCamera() } } label: { Label("Record your day", systemImage: "record.circle").font(.title3.bold()).frame(maxWidth: .infinity, minHeight: 60) }.buttonStyle(.borderedProminent).accessibilityIdentifier("record-day").disabled(opening)
+                        Button { Task { await openCamera() } } label: { Label("Record your day", systemImage: "record.circle").font(.title3.bold()).frame(maxWidth: .infinity, minHeight: 60) }.buttonStyle(.borderedProminent).accessibilityIdentifier("record-day").disabled(opening || days.isEmpty)
                     }
                     Section("Your drafts in \(group.name)") {
                         ForEach(store.archive.drafts.filter { $0.group == group.id }.sorted { $0.createdAt > $1.createdAt }) { item in
@@ -67,7 +68,7 @@ struct RecordHubView: View {
             .sheet(isPresented: $create) { CreateGroupView() }
             .sheet(item: $draft) { item in DraftView(initial: item.draft, startsRecording: opening).onDisappear { opening = false } }
             .confirmationDialog("Delete this draft and its clips?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible) { Button("Delete draft", role: .destructive) { if let deleting { Task { await store.removeDraft(deleting) } }; deleting = nil } }
-            .task { await openCamera() }
+            .task { if let group = store.group, !VlogCalendar.availableDays(for: store.user, group: group, members: store.archive.members, now: .now).isEmpty { await openCamera() } }
         }
     }
     private func openCamera() async {

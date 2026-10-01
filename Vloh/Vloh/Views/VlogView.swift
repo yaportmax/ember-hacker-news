@@ -74,7 +74,7 @@ struct VlogView: View {
     private func load() async {
         guard !loading else { return }; loading = true; error = nil
         defer { loading = false }
-        do { url = try await store.file(for: vlog); fullscreen = true; store.archive.seen.insert(vlog.id); store.save() }
+        do { url = try await store.file(for: vlog); fullscreen = true; store.archive.seen.insert(vlog.group.key + "/" + vlog.id); store.save() }
         catch { self.error = error.localizedDescription }
     }
 }
@@ -99,14 +99,16 @@ struct ReplyRow: View {
     }
 }
 struct ChatView: View {
+    let groupID: GroupID
     @Environment(AppStore.self) private var store
     @State private var text = ""
     @State private var sending = false
     @FocusState private var composing: Bool
-    private var replies: [Reply] { store.archive.replies.filter { $0.group == store.group?.id && $0.vlogID == nil && !store.isBlocked($0.authorID) && !store.hiddenContent.contains($0.group.key + "/" + $0.id) }.sorted { $0.createdAt < $1.createdAt } }
+    private var group: VlohGroup? { store.archive.groups.first { $0.id == groupID } }
+    private var replies: [Reply] { store.archive.replies.filter { $0.group == groupID && $0.vlogID == nil && !store.isBlocked($0.authorID) && !store.hiddenContent.contains($0.group.key + "/" + $0.id) }.sorted { $0.createdAt < $1.createdAt } }
     var body: some View {
         Group {
-            if store.group == nil { ContentUnavailableView("Your group goes here", systemImage: "bubble.left.and.bubble.right", description: Text("Create or join a group from Today.")) }
+            if group == nil { ContentUnavailableView("Your group goes here", systemImage: "bubble.left.and.bubble.right", description: Text("Create or join a group from Your groups.")) }
             else {
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -122,12 +124,12 @@ struct ChatView: View {
                 .safeAreaInset(edge: .bottom) {
                     HStack {
                         TextField("Message your group", text: $text, axis: .vertical).focused($composing).lineLimit(1...4).textFieldStyle(.roundedBorder).accessibilityIdentifier("chat-message")
-                        Button { sending = true; Task { if await store.send(text: text) { text = "" }; sending = false } } label: { Image(systemName: "arrow.up.circle.fill").font(.title).frame(width: 44, height: 44) }
+                        Button { sending = true; Task { if await store.send(text: text, in: groupID) { text = "" }; sending = false } } label: { Image(systemName: "arrow.up.circle.fill").font(.title).frame(width: 44, height: 44) }
                             .disabled(sending || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || text.count > 2000).accessibilityLabel("Send message").accessibilityIdentifier("send-message")
                     }.padding().background(.bar)
                 }
             }
-        }.navigationTitle(store.group?.name ?? "Chat").navigationBarTitleDisplayMode(.inline)
+        }.navigationTitle(group?.name ?? "Chat").navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Done") { composing = false }.accessibilityIdentifier("dismiss-keyboard") } }
         .task {
             while !Task.isCancelled {
@@ -136,4 +138,3 @@ struct ChatView: View {
         }
     }
 }
-

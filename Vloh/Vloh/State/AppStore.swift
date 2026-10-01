@@ -57,6 +57,7 @@ final class AppStore {
     func groupPhotoURL(_ group: GroupID) -> URL { let key = Data(group.key.utf8).base64EncodedString().replacingOccurrences(of: "/", with: "_"); return root.appendingPathComponent("GroupPhotos/" + key + ".jpg") }
     func connectApple(user: String, displayName: String) async {
         error = nil
+        signedOut = true
         if !fixture {
             do { let iCloudUser = try await cloud.identity(); if let original = archive.accountID, original != iCloudUser { throw VlohError.message("Use the iCloud account linked to this Vloh profile.") }; archive.accountID = iCloudUser }
             catch { self.error = error.localizedDescription; return }
@@ -66,9 +67,14 @@ final class AppStore {
         let value = displayName.isEmpty ? name : displayName
         guard !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { error = "Enter a display name to finish creating your account."; return }
         await saveName(value)
-        if error == nil { signedOut = false; UserDefaults.standard.set(false, forKey: "signedOut") }
+        if error == nil { signedOut = false; accountDeleted = false; UserDefaults.standard.set(false, forKey: "signedOut") }
     }
     func signOut() { signedOut = true; UserDefaults.standard.set(true, forKey: "signedOut") }
+    func verifyAppleAuthorization() async throws {
+        guard !fixture, !signedOut, let id = archive.appleUserID else { return }
+        let state = try await ASAuthorizationAppleIDProvider().credentialState(forUserID: id)
+        if state != .authorized { signOut(); throw VlohError.message("Your Apple authorization changed. Sign in again to continue.") }
+    }
     func saveProfilePhoto(_ data: Data) async throws {
         let url = root.appendingPathComponent("ProfilePhoto.jpg")
         try await PhotoService.save(data, to: url)
@@ -93,7 +99,7 @@ final class AppStore {
             await media.clearCache()
             for draft in archive.drafts { await media.cleanup(draft) }
             for file in try FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil) { try FileManager.default.removeItem(at: file) }
-            archive = Archive(); selectedGroup = nil; blockedAuthors = []; hiddenContent = []; accountDeleted = true
+            archive = Archive(); selectedGroup = nil; blockedAuthors = []; hiddenContent = []; accountDeleted = true; signOut()
             UserDefaults.standard.removeObject(forKey: "blockedAuthors"); UserDefaults.standard.removeObject(forKey: "hiddenContent")
             try await persist()
         } catch { self.error = error.localizedDescription }
@@ -137,6 +143,7 @@ final class AppStore {
             if let profile = try? await cloud.profile(destination: root.appendingPathComponent("ProfilePhoto.jpg")) {
                 archive.name = profile.0; archive.appleUserID = profile.1; archive.hasProfilePhoto = profile.2
             }
+            try await verifyAppleAuthorization()
             let snapshot = try await cloud.snapshot()
             archive.groups = snapshot.groups.sorted { $0.createdAt < $1.createdAt }
             archive.members = snapshot.members; archive.vlogs = snapshot.vlogs
@@ -164,18 +171,18 @@ final class AppStore {
             try await persist(); await refresh()
         } catch { self.error = error.localizedDescription }
     }
-    func recordingDraft(day: Date? = nil) async -> UUID? {
-        guard let group else { error = "Create or join a group first."; return nil }
+    func recordingDraft(groupID: GroupID? = nil, day: Date? = nil) async -> UUID? {
+        guard let group = groupID.flatMap({ id in archive.groups.first { $0.id == id } }) ?? self.group else { error = "Create or join a group first."; return nil }
         let days = VlogCalendar.availableDays(for: user, group: group, members: archive.members, now: .now)
         let preferred = archive.drafts.first { draft in draft.group == group.id && draft.canEdit && !draft.clips.isEmpty && draft.vlogDay.map { days.contains($0) && VlogCalendar.window(for: $0, in: group).contains(.now) } == true }?.vlogDay
         let currentWindow = days.first { VlogCalendar.window(for: $0, in: group).contains(.now) }
         guard let chosen = day ?? preferred ?? currentWindow ?? days.first else { error = "It's someone else's vlog day. Check your group's schedule for your next turn."; return nil }
         guard days.contains(VlogCalendar.day(chosen, in: group)) else { error = "Choose one of your scheduled days."; return nil }
         if let draft = archive.drafts.first(where: { $0.group == group.id && $0.canEdit && $0.vlogDay.map { VlogCalendar.key($0, in: group) == VlogCalendar.key(chosen, in: group) } == true }) { return draft.id }
-        return await newDraft(day: chosen)
+        return await newDraft(groupID: group.id, day: chosen)
     }
-    func newDraft(day: Date? = nil) async -> UUID? {
-        guard let group else { error = "Create or join a group first."; return nil }
+    func newDraft(groupID: GroupID? = nil, day: Date? = nil) async -> UUID? {
+        guard let group = groupID.flatMap({ id in archive.groups.first { $0.id == id } }) ?? self.group else { error = "Create or join a group first."; return nil }
         let draft = Draft(group: group.id, vlogDay: day)
         archive.drafts.append(draft)
         do { try await persist(); return draft.id }
@@ -273,9 +280,9 @@ final class AppStore {
         try await media.purgeCache(keeping: url)
         return url
     }
-    func preloadRecentVideos() async {
+    func preloadRecentVideos(groupID: GroupID? = nil) async {
         guard online else { return }
-        for vlog in groupVlogs.prefix(3) {
+        for vlog in (groupID.map { visibleVlogs(in: $0) } ?? groupVlogs).prefix(3) {
             guard !Task.isCancelled, online, activeUpload == nil else { return }
             _ = try? await file(for: vlog)
         }
@@ -294,8 +301,8 @@ final class AppStore {
             } catch { syncMessage = "An interrupted recording is kept on this iPhone. " + error.localizedDescription }
         }
     }
-    func send(text: String, vlog: Vlog? = nil) async -> Bool {
-        guard let groupID = vlog?.group ?? group?.id, !name.isEmpty, !user.isEmpty else { error = "Connect to your group before replying."; return false }
+    func send(text: String, in targetGroup: GroupID? = nil, vlog: Vlog? = nil) async -> Bool {
+        guard let groupID = vlog?.group ?? targetGroup ?? group?.id, !name.isEmpty, !user.isEmpty else { error = "Connect to your group before replying."; return false }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed.count <= 2000 else { return false }
         guard ContentPolicy.allows(trimmed) else { error = "That message contains abusive language. Edit it before sending."; return false }
@@ -334,9 +341,11 @@ final class AppStore {
         signedOut = false
         archive.name = "Max"; archive.accountID = "max"
         let id = GroupID(zone: "friends", owner: "test", shared: false)
-        let group = VlohGroup(id: id, name: "The buddies", createdAt: Calendar.current.startOfDay(for: .now), rotation: true, timeZone: "America/Los_Angeles")
-        archive.groups = [group]; selectedGroup = id
-        archive.members = [Member(id: "max", group: id, name: "Max", joinedAt: .distantPast), Member(id: "sam", group: id, name: "Sam", joinedAt: Date(timeIntervalSince1970: 1))]
+        let group = VlohGroup(id: id, name: "The buddies", createdAt: .now, rotation: true, timeZone: "America/Los_Angeles")
+        let otherID = GroupID(zone: "weekend", owner: "test", shared: false)
+        let other = VlohGroup(id: otherID, name: "Weekend crew", createdAt: .now, rotation: true, timeZone: "America/Los_Angeles")
+        archive.groups = [group, other]; selectedGroup = id
+        archive.members = [Member(id: "max", group: id, name: "Max", joinedAt: .distantPast), Member(id: "sam", group: id, name: "Sam", joinedAt: Date(timeIntervalSince1970: 1)), Member(id: "max", group: otherID, name: "Max", joinedAt: .distantPast), Member(id: "sam", group: otherID, name: "Sam", joinedAt: Date(timeIntervalSince1970: 1))]
         archive.vlogs = [Vlog(id: "preview", group: id, authorID: "sam", authorName: "Sam", caption: "A little bit of today", createdAt: .now, duration: 83)]
         archive.drafts = [Draft(group: id, caption: "Weekend adventures", vlogDay: VlogCalendar.day(.now, in: group))]
     }

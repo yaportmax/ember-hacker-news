@@ -50,22 +50,22 @@ actor CloudService {
     private func addToSchedule(_ user: String, group: GroupID) async throws {
         // Re-read after a conflict so concurrent invitations retain both members.
         for attempt in 0..<3 {
-        let groupRecord = try await database(group).record(for: recordID("group", group))
-        let value = decodeGroup(groupRecord, group)
-        var orders = value.orders ?? []
-        if !orders.isEmpty {
-            let latest = orders.max(by: { $0.effectiveDay < $1.effectiveDay })!
-            if !latest.members.contains(user) {
-                let calendar = VlogCalendar.calendar(for: value)
-                let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: .now))!
-                orders.removeAll { $0.effectiveDay >= tomorrow }
-                orders.append(VlogOrder(effectiveDay: tomorrow, members: latest.members + [user]))
-                groupRecord["schedule"] = try JSONEncoder().encode(orders) as CKRecordValue
-                do { _ = try await database(group).save(groupRecord) }
-                catch let error as CKError where error.code == .serverRecordChanged && attempt < 2 { continue }
+            let groupRecord = try await database(group).record(for: recordID("group", group))
+            let value = decodeGroup(groupRecord, group)
+            var orders = value.orders ?? []
+            if !orders.isEmpty {
+                let latest = orders.max(by: { $0.effectiveDay < $1.effectiveDay })!
+                if !latest.members.contains(user) {
+                    let calendar = VlogCalendar.calendar(for: value)
+                    let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: .now))!
+                    orders.removeAll { $0.effectiveDay >= tomorrow }
+                    orders.append(VlogOrder(effectiveDay: tomorrow, members: latest.members + [user]))
+                    groupRecord["schedule"] = try JSONEncoder().encode(orders) as CKRecordValue
+                    do { _ = try await database(group).save(groupRecord) }
+                    catch let error as CKError where error.code == .serverRecordChanged && attempt < 2 { continue }
+                }
             }
-        }
-        return
+            return
         }
     }
     func post(_ draft: Draft, author: String, name: String, video: URL, poster: URL) async throws -> Vlog {
