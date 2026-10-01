@@ -15,7 +15,7 @@ struct ScheduleView: View {
                     let date = calendar.date(byAdding: .day, value: offset, to: calendar.startOfDay(for: .now))!
                     let member = Rotation.member(for: group, members: store.archive.members, date: date)
                     HStack {
-                        VStack(alignment: .leading) { Text(date.formatted(.dateTime.weekday(.wide).timeZone(calendar.timeZone))).font(.headline); Text(date.formatted(.dateTime.month(.abbreviated).day().timeZone(calendar.timeZone))).font(.caption).foregroundStyle(.secondary) }
+                        VStack(alignment: .leading) { Text(VlogCalendar.label(date, in: group, format: "EEEE")).font(.headline); Text(VlogCalendar.label(date, in: group, format: "MMM d")).font(.caption).foregroundStyle(.secondary) }
                         Spacer()
                         if let member { Avatar(name: member.name); Text(member.id == store.user ? "You" : member.name).fontWeight(member.id == store.user ? .semibold : .regular) }
                     }.padding(.vertical, 6)

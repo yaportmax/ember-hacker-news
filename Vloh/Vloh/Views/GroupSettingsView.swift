@@ -43,7 +43,7 @@ struct GroupSettingsView: View {
                 }
                 Section("Members") {
                     ForEach(store.archive.members.filter { $0.group == groupID }) { member in
-                        HStack { Avatar(name: member.name); Text(member.name); Spacer(); if member.id != store.user { Button(store.isBlocked(member.id) ? "Unblock" : "Block") { store.toggleBlock(member.id) }.font(.caption) } }
+                        HStack { MemberPicture(member: member); NavigationLink(member.name) { MemberVlogsView(member: member) }; Spacer(); if member.id != store.user { Button(store.isBlocked(member.id) ? "Unblock" : "Block") { store.toggleBlock(member.id) }.font(.caption) } }
                     }
                     if !group.id.shared { Button("Manage invitations and remove members") { busy = true; Task { do { share = SharePresentation(share: try await store.cloud.share(group), group: group) } catch { self.error = error.localizedDescription }; busy = false } }.disabled(busy) }
                 }

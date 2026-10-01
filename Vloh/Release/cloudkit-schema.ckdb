@@ -22,6 +22,8 @@ DEFINE SCHEMA
         createdAt       TIMESTAMP,
         name            STRING,
         rotation        INT64,
+        photo           ASSET,
+        schedule        BYTES,
         timeZone        STRING,
         GRANT READ, WRITE TO "_creator",
         GRANT CREATE TO "_icloud"
@@ -35,6 +37,7 @@ DEFINE SCHEMA
         "___modifiedBy" REFERENCE,
         "___recordID"   REFERENCE,
         joinedAt        TIMESTAMP,
+        photo           ASSET,
         name            STRING,
         user            STRING,
         GRANT READ, WRITE TO "_creator",
@@ -83,8 +86,25 @@ DEFINE SCHEMA
         caption         STRING,
         createdAt       TIMESTAMP,
         duration        DOUBLE,
+        vlogDay         TIMESTAMP,
+        draftID         STRING,
+        deleted         INT64,
         poster          ASSET,
         video           ASSET,
+        GRANT READ, WRITE TO "_creator",
+        GRANT CREATE TO "_icloud"
+    );
+
+    RECORD TYPE VlohProfile (
+        "___createTime" TIMESTAMP,
+        "___createdBy" REFERENCE,
+        "___etag" STRING,
+        "___modTime" TIMESTAMP,
+        "___modifiedBy" REFERENCE,
+        "___recordID" REFERENCE,
+        name STRING,
+        appleUser STRING,
+        photo ASSET,
         GRANT READ, WRITE TO "_creator",
         GRANT CREATE TO "_icloud"
     );

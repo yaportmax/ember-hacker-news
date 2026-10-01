@@ -30,7 +30,7 @@ final class CameraEngine: NSObject, @unchecked Sendable, AVCaptureFileOutputReco
                     session.addInput(video); session.addInput(audio); session.addOutput(output)
                     input = video; configured = true
                     if let connection = output.connection(with: .video), connection.isVideoRotationAngleSupported(90) { connection.videoRotationAngle = 90 }
-                    observers.append(NotificationCenter.default.addObserver(forName: .AVCaptureSessionWasInterrupted, object: session, queue: nil) { [weak self] _ in self?.stopRecording() })
+                    observers.append(NotificationCenter.default.addObserver(forName: AVCaptureSession.wasInterruptedNotification, object: session, queue: nil) { [weak self] _ in self?.stopRecording() })
                 }
                 if !session.isRunning { session.startRunning() }
                 onReady(nil)

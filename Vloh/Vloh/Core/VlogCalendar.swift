@@ -3,6 +3,7 @@ import Foundation
 enum VlogCalendar {
     static func calendar(for group: VlohGroup) -> Calendar { var calendar = Calendar(identifier: .gregorian); calendar.timeZone = TimeZone(identifier: group.timeZone) ?? TimeZone(secondsFromGMT: 0)!; return calendar }
     static func day(_ date: Date, in group: VlohGroup) -> Date { calendar(for: group).startOfDay(for: date) }
+    static func label(_ date: Date, in group: VlohGroup, format: String = "EEE, MMM d") -> String { let formatter = DateFormatter(); formatter.timeZone = calendar(for: group).timeZone; formatter.dateFormat = format; return formatter.string(from: date) }
     static func key(_ date: Date, in group: VlohGroup) -> String {
         let parts = calendar(for: group).dateComponents([.year, .month, .day], from: date)
         return String(format: "%04d-%02d-%02d", parts.year!, parts.month!, parts.day!)

@@ -57,7 +57,7 @@ struct DraftView: View {
         NavigationStack {
             List {
                 Section {
-                    if let group = store.archive.groups.first(where: { $0.id == draft.group }), let day = draft.vlogDay { Label("Vlog for " + day.formatted(.dateTime.weekday(.wide).month().day().timeZone(VlogCalendar.calendar(for: group).timeZone)), systemImage: "calendar").font(.headline) }
+                    if let group = store.archive.groups.first(where: { $0.id == draft.group }), let day = draft.vlogDay { Label("Vlog for " + VlogCalendar.label(day, in: group), systemImage: "calendar").font(.headline) }
                     TextField("A caption for your day", text: $draft.caption, axis: .vertical).lineLimit(2...4)
                         .onChange(of: draft.caption) { _, value in if value.count > 500 { draft.caption = String(value.prefix(500)) } }
                     Label("\(draft.clips.count) clips · \(Duration.seconds(draft.totalDuration).formatted(.time(pattern: .minuteSecond)))", systemImage: "film.stack").font(.subheadline).foregroundStyle(.secondary)
@@ -139,7 +139,11 @@ struct DraftView: View {
     }
     private func append(_ url: URL) async throws {
         guard draft.clips.count < Limits.clips else { throw VlohError.message("This draft already has 40 clips.") }
-        let clip = try await store.media.importClip(from: url)
+        var clip = try await store.media.importClip(from: url)
+        if let filmed = clip.filmedAt, let day = draft.vlogDay, let group = store.archive.groups.first(where: { $0.id == draft.group }) {
+            let window = VlogCalendar.window(for: day, in: group)
+            clip.start = max(0, window.start.timeIntervalSince(filmed)); clip.end = min(clip.duration, window.end.timeIntervalSince(filmed))
+        }
         guard let day = draft.vlogDay, let group = store.archive.groups.first(where: { $0.id == draft.group }), VlogCalendar.permits(clip, day: day, in: group) else { await store.media.cleanupClip(clip); throw VlohError.message("This clip needs a filming date within your vlog's window: 2 AM on your day through 8 AM the next day.") }
         draft.clips.append(clip); draft.invalidateExport()
         try await store.update(draft)

@@ -1,4 +1,5 @@
 import SwiftUI
+import AuthenticationServices
 
 struct RootView: View {
     @Environment(AppStore.self) private var store
@@ -9,6 +10,7 @@ struct RootView: View {
         @Bindable var store = store
         Group {
             if !store.ready { ProgressView("Opening Vloh") }
+            else if store.name.isEmpty || store.signedOut { WelcomeView() }
             else {
                 TabView(selection: $tab) {
                     NavigationStack { GroupsView() }.tabItem { Label("Groups", systemImage: "person.2.fill") }.tag(0)
@@ -21,9 +23,7 @@ struct RootView: View {
         .alert("Couldn't finish that", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) {
             Button("OK") { store.error = nil }
         } message: { Text(store.error ?? "") }
-        .sheet(isPresented: $onboarding) { WelcomeView().interactiveDismissDisabled() }
-        .onChange(of: store.accountDeleted) { _, deleted in if deleted { onboarding = true; store.accountDeleted = false } }
-        .onChange(of: store.ready) { _, ready in if ready && store.name.isEmpty { onboarding = true } }
+
     }
 }
 struct WelcomeView: View {
@@ -39,12 +39,18 @@ struct WelcomeView: View {
                 Text("Your people.\nYour everyday.").font(.largeTitle.bold())
                 Text("Record a few clips, share your day, and keep up with your friends. Just your private group.").foregroundStyle(.secondary)
                 TextField("Your first name", text: $name).textContentType(.givenName).textFieldStyle(.roundedBorder).accessibilityIdentifier("welcome-name")
-                Button {
-                    busy = true
-                    Task { await store.saveName(name); busy = false; if store.error == nil { dismiss() } }
-                } label: { Text(busy ? "Saving…" : "Let's go").frame(maxWidth: .infinity, minHeight: 44) }
-                .buttonStyle(.borderedProminent).disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || busy)
-                .accessibilityIdentifier("welcome-continue")
+                SignInWithAppleButton(.signUp, onRequest: { request in request.requestedScopes = [.fullName] }, onCompletion: { result in
+                    switch result {
+                    case .success(let authorization):
+                        guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else { return }
+                        let appleName = credential.fullName.map { PersonNameComponentsFormatter().string(from: $0) } ?? ""
+                        busy = true
+                        Task { await store.connectApple(user: credential.user, displayName: name.isEmpty ? appleName : name); busy = false }
+                    case .failure(let error): if (error as? ASAuthorizationError)?.code != .canceled { store.error = error.localizedDescription }
+                    }
+                }).frame(height: 50).disabled(busy).accessibilityIdentifier("welcome-continue")
+                HStack { NavigationLink("Privacy policy") { PolicyView(kind: .privacy) }; Spacer(); NavigationLink("Community rules") { PolicyView(kind: .community) } }.font(.caption)
+                Text("By creating your account, you agree to follow the community rules. Only share footage you have permission to share.").font(.caption).foregroundStyle(.secondary)
                 Text("Sharing uses your iCloud account. No separate password.").font(.footnote).foregroundStyle(.secondary)
                 Spacer()
             }.padding(28).frame(maxWidth: 560).frame(maxWidth: .infinity).navigationTitle("Vloh").navigationBarTitleDisplayMode(.inline)

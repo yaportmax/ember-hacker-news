@@ -54,7 +54,7 @@ actor CloudService {
         // One atomic record ID per group/day also makes retries idempotent.
         do {
             let existing = try await database(draft.group).record(for: id)
-            guard existing["author"] as? String == author, existing["draftID"] as? String == draft.id.uuidString else { throw VlohError.message("This day already has its vlog.") }
+            guard (existing["deleted"] as? Int ?? 0) == 0, existing["author"] as? String == author, existing["draftID"] as? String == draft.id.uuidString else { throw VlohError.message("This day already has its vlog.") }
             return vlog(existing, draft.group)
         } catch let error as CKError where error.code == .unknownItem { }
         let record = CKRecord(recordType: "VlohVlog", recordID: id)
@@ -78,6 +78,7 @@ actor CloudService {
         record["createdAt"] = Date.now as CKRecordValue
         _ = try await database(group).save(record)
     }
+    func deleteReply(_ reply: Reply) async throws { _ = try await database(reply.group).deleteRecord(withID: recordID(reply.id, reply.group)) }
     func react(vlog: Vlog, author: String, emoji: String) async throws {
         let id = recordID("reaction-\(vlog.id)-\(author)", vlog.group)
         let record: CKRecord
@@ -87,7 +88,11 @@ actor CloudService {
         record["emoji"] = emoji as CKRecordValue
         _ = try await database(vlog.group).save(record)
     }
-    func delete(_ vlog: Vlog) async throws { _ = try await database(vlog.group).deleteRecord(withID: recordID(vlog.id, vlog.group)) }
+    func delete(_ vlog: Vlog) async throws {
+        let record = try await database(vlog.group).record(for: recordID(vlog.id, vlog.group))
+        record["deleted"] = 1 as CKRecordValue; record["video"] = nil; record["poster"] = nil
+        _ = try await database(vlog.group).save(record)
+    }
     func asset(_ vlog: Vlog, key: String, destination: URL) async throws -> URL {
         let record = try await database(vlog.group).records(for: [recordID(vlog.id, vlog.group)], desiredKeys: [key])
         guard let result = record[recordID(vlog.id, vlog.group)], let asset = try result.get()[key] as? CKAsset, let url = asset.fileURL else {
@@ -118,7 +123,7 @@ actor CloudService {
                         snapshot.groups.append(decodeGroup(record, group))
                     case "VlohMember":
                         snapshot.members.append(Member(id: record["user"] as? String ?? record.recordID.recordName, group: group, name: record["name"] as? String ?? "Friend", joinedAt: record["joinedAt"] as? Date ?? .distantPast))
-                    case "VlohVlog": snapshot.vlogs.append(vlog(record, group))
+                    case "VlohVlog": if (record["deleted"] as? Int ?? 0) == 0 { snapshot.vlogs.append(vlog(record, group)) }
                     case "VlohReply":
                         snapshot.replies.append(Reply(id: record.recordID.recordName, group: group, vlogID: record["vlog"] as? String, authorID: record["author"] as? String ?? "", authorName: record["authorName"] as? String ?? "Friend", text: record["text"] as? String ?? "", createdAt: record["createdAt"] as? Date ?? .distantPast))
                     case "VlohReaction":
@@ -192,7 +197,7 @@ actor CloudService {
     private func records(in zone: CKRecordZone.ID, database: CKDatabase) async throws -> [CKRecord] {
         let collector = RecordCollector()
         let config = CKFetchRecordZoneChangesOperation.ZoneConfiguration()
-        config.desiredKeys = ["name", "createdAt", "rotation", "timeZone", "user", "joinedAt", "author", "authorName", "caption", "duration", "vlog", "text", "emoji", "vlogDay", "draftID", "schedule"]
+        config.desiredKeys = ["name", "createdAt", "rotation", "timeZone", "user", "joinedAt", "author", "authorName", "caption", "duration", "vlog", "text", "emoji", "vlogDay", "draftID", "schedule", "deleted"]
         let operation = CKFetchRecordZoneChangesOperation(recordZoneIDs: [zone], configurationsByRecordZoneID: [zone: config])
         operation.fetchAllChanges = true
         return try await withCheckedThrowingContinuation { continuation in

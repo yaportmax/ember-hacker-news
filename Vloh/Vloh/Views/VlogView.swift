@@ -92,6 +92,7 @@ struct ReplyRow: View {
         }.padding(.vertical, 6)
         .contextMenu {
             Button("Report content", systemImage: "flag") { report = ReportTarget(contentID: reply.id, group: reply.group, author: reply.authorID, text: reply.text) }
+            if reply.authorID == store.user || !reply.group.shared { Button("Delete message", systemImage: "trash", role: .destructive) { Task { await store.deleteReply(reply) } } }
             Button("Hide message", systemImage: "eye.slash") { store.hide(reply.id, group: reply.group) }
             if reply.authorID != store.user { Button("Block member", systemImage: "person.crop.circle.badge.xmark") { store.toggleBlock(reply.authorID) } }
         }.sheet(item: $report) { ReportView(target: $0) }

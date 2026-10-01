@@ -12,6 +12,7 @@ final class AppStore {
     var online = true
     var error: String?
     var syncMessage: String?
+    var signedOut = UserDefaults.standard.bool(forKey: "signedOut")
     var accountDeleted = false
     var photoRevision = UUID()
     var blockedAuthors: Set<String> = Set(UserDefaults.standard.stringArray(forKey: "blockedAuthors") ?? [])
@@ -56,8 +57,12 @@ final class AppStore {
     func connectApple(user: String, displayName: String) async {
         guard archive.appleUserID == nil || archive.appleUserID == user else { error = "Use the Apple account already linked to this Vloh profile."; return }
         archive.appleUserID = user
-        await saveName(displayName.isEmpty ? name : displayName)
+        let value = displayName.isEmpty ? name : displayName
+        guard !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { error = "Enter a display name to finish creating your account."; return }
+        await saveName(value)
+        if error == nil { signedOut = false; UserDefaults.standard.set(false, forKey: "signedOut") }
     }
+    func signOut() { signedOut = true; UserDefaults.standard.set(true, forKey: "signedOut") }
     func saveProfilePhoto(_ data: Data) async throws {
         let url = root.appendingPathComponent("ProfilePhoto.jpg")
         try await PhotoService.save(data, to: url)
@@ -152,7 +157,9 @@ final class AppStore {
     func recordingDraft(day: Date? = nil) async -> UUID? {
         guard let group else { error = "Create or join a group first."; return nil }
         let days = VlogCalendar.availableDays(for: user, group: group, members: archive.members, now: .now)
-        guard let chosen = day ?? days.first else { error = "It's someone else's vlog day. Check your group's schedule for your next turn."; return nil }
+        let preferred = archive.drafts.first { draft in draft.group == group.id && draft.canEdit && !draft.clips.isEmpty && draft.vlogDay.map { days.contains($0) && VlogCalendar.window(for: $0, in: group).contains(.now) } == true }?.vlogDay
+        let currentWindow = days.first { VlogCalendar.window(for: $0, in: group).contains(.now) }
+        guard let chosen = day ?? preferred ?? currentWindow ?? days.first else { error = "It's someone else's vlog day. Check your group's schedule for your next turn."; return nil }
         guard days.contains(VlogCalendar.day(chosen, in: group)) else { error = "Choose one of your scheduled days."; return nil }
         if let draft = archive.drafts.first(where: { $0.group == group.id && $0.canEdit && $0.vlogDay.map { VlogCalendar.key($0, in: group) == VlogCalendar.key(chosen, in: group) } == true }) { return draft.id }
         return await newDraft(day: chosen)
@@ -196,7 +203,7 @@ final class AppStore {
         do { try await persist(); startQueue() } catch { self.error = error.localizedDescription }
     }
     func startQueue() {
-        guard !fixture, storageHealthy, online, !user.isEmpty, uploadTask == nil else { return }
+        guard !fixture, !signedOut, storageHealthy, online, !user.isEmpty, uploadTask == nil else { return }
         uploadTask = Task { await runQueue(); uploadTask = nil }
     }
     private func runQueue() async {
@@ -277,19 +284,23 @@ final class AppStore {
         }
     }
     func send(text: String, vlog: Vlog? = nil) async -> Bool {
-        guard let group, !name.isEmpty else { error = "Add your name before replying."; return false }
+        guard let groupID = vlog?.group ?? group?.id, !name.isEmpty, !user.isEmpty else { error = "Connect to your group before replying."; return false }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed.count <= 2000 else { return false }
         guard ContentPolicy.allows(trimmed) else { error = "That message contains abusive language. Edit it before sending."; return false }
         do {
-            if fixture { archive.replies.append(Reply(id: UUID().uuidString, group: group.id, vlogID: vlog?.id, authorID: user, authorName: name, text: trimmed, createdAt: .now)) }
-            else { try await cloud.reply(group: group.id, vlogID: vlog?.id, author: user, name: name, text: trimmed); await refresh() }
+            if fixture { archive.replies.append(Reply(id: UUID().uuidString, group: groupID, vlogID: vlog?.id, authorID: user, authorName: name, text: trimmed, createdAt: .now)) }
+            else { try await cloud.reply(group: groupID, vlogID: vlog?.id, author: user, name: name, text: trimmed); await refresh() }
             return true
         } catch { self.error = error.localizedDescription; return false }
     }
     func react(_ vlog: Vlog, emoji: String) async {
         do { if !fixture { try await cloud.react(vlog: vlog, author: user, emoji: emoji); await refresh() } }
         catch { self.error = error.localizedDescription }
+    }
+    func deleteReply(_ reply: Reply) async {
+        guard reply.authorID == user || !reply.group.shared else { return }
+        do { if !fixture { try await cloud.deleteReply(reply) }; archive.replies.removeAll { $0.group == reply.group && $0.id == reply.id }; try await persist() } catch { self.error = error.localizedDescription }
     }
     func delete(_ vlog: Vlog) async {
         guard vlog.authorID == user || !vlog.group.shared else { return }

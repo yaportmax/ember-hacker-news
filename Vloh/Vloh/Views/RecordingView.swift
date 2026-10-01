@@ -26,11 +26,11 @@ final class Recorder {
         engine.prepare(onReady: { [weak self] message in Task { @MainActor in self?.error = message; self?.ready = message == nil } }, onClip: { [weak self] url, message in
             Task { @MainActor in
                 guard let self else { return }
-                recording = false; finishing = false; startedAt = nil
-                if let message { error = message; return }
-                saving += 1
+                self.recording = false; self.finishing = false; self.startedAt = nil
+                if let message { self.error = message; return }
+                self.saving += 1
                 do { try await onClip(url) } catch { self.error = error.localizedDescription }
-                saving -= 1
+                self.saving -= 1
             }
         })
     }
@@ -47,7 +47,7 @@ final class Recorder {
                         let file = folder.appendingPathComponent(draftID.uuidString + "-" + UUID().uuidString + "-" + String(Int(Date.now.timeIntervalSince1970 * 1000)) + ".mov")
                         try FileManager.default.copyItem(at: source, to: file); try await fixtureClip?(file)
                     } catch { self.error = error.localizedDescription }
-                    saving -= 1
+                    self.saving -= 1
                 }
             } else { recording = true; startedAt = .now }
             return

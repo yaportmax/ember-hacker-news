@@ -14,7 +14,7 @@ struct GroupsView: View {
                     FeedView().onAppear { store.selectedGroup = group.id }
                 } label: {
                     VStack(alignment: .leading, spacing: 10) {
-                        HStack { Image(systemName: "person.2.fill").font(.title2).foregroundStyle(.orange); Text(group.name).font(.title2.bold()); Spacer() }
+                        HStack { GroupPicture(group: group, size: 48); Text(group.name).font(.title2.bold()); Spacer() }
                         let vlogs = store.visibleVlogs(in: group.id)
                         Text("\(store.archive.members.filter { $0.group == group.id }.count) members · \(vlogs.count) vlogs").font(.subheadline).foregroundStyle(.secondary)
                         if let latest = vlogs.first { Text("\(latest.authorName) shared \(latest.createdAt.formatted(.relative(presentation: .named)))").font(.caption).foregroundStyle(.secondary) }
@@ -34,6 +34,7 @@ struct RecordHubView: View {
     @State private var draft: DraftPresentation?
     @State private var create = false
     @State private var opening = false
+    @State private var vlogDay: Date?
     var body: some View {
         NavigationStack {
             List {
@@ -42,6 +43,10 @@ struct RecordHubView: View {
                         Menu {
                             ForEach(store.archive.groups) { group in Button(group.name) { store.selectedGroup = group.id } }
                         } label: { Label("Recording for \(group.name)", systemImage: "person.2").font(.headline).frame(minHeight: 44) }.accessibilityIdentifier("record-group-picker")
+                        let days = VlogCalendar.availableDays(for: store.user, group: group, members: store.archive.members, now: .now)
+                        if days.count > 1 {
+                            Menu { ForEach(days, id: \.self) { day in Button(VlogCalendar.label(day, in: group)) { vlogDay = day } } } label: { Label("Vlog day: " + VlogCalendar.label(vlogDay ?? days.first!, in: group), systemImage: "calendar") }
+                        }
                         Button { Task { await openCamera() } } label: { Label("Record your day", systemImage: "record.circle").font(.title3.bold()).frame(maxWidth: .infinity, minHeight: 60) }.buttonStyle(.borderedProminent).accessibilityIdentifier("record-day").disabled(opening)
                     }
                     Section("Your drafts in \(group.name)") {
@@ -66,7 +71,7 @@ struct RecordHubView: View {
     private func openCamera() async {
         guard store.group != nil, draft == nil else { return }
         opening = true
-        if let id = await store.recordingDraft(), let value = store.archive.drafts.first(where: { $0.id == id }) { draft = DraftPresentation(id: id, draft: value) }
+        if let id = await store.recordingDraft(day: vlogDay), let value = store.archive.drafts.first(where: { $0.id == id }) { draft = DraftPresentation(id: id, draft: value) }
         else { opening = false }
     }
 }

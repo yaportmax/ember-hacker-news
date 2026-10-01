@@ -32,6 +32,7 @@ struct AccountView: View {
                 }
                 Text("Your Vloh profile and private groups use iCloud. Use the same iCloud account on each device. Apple manages your sign-in; Vloh has no password to store.").font(.footnote).foregroundStyle(.secondary)
             }
+            Section { Button("Sign out") { store.signOut() }.disabled(busy || store.activeUpload != nil) }
             Section("Your data") {
                 NavigationLink("Privacy policy") { PolicyView(kind: .privacy) }
                 NavigationLink("Community rules") { PolicyView(kind: .community) }
